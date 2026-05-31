@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Следопыт</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #0C1714;
+    --surface: #152118;
+    --card: #1C2E22;
+    --border: #2A4030;
+    --amber: #F4A435;
+    --amber-dim: #8B5E1A;
+    --text: #F5F0E8;
+    --text-muted: #7A9A82;
+    --rare: #CE93D8;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,sans-serif; height:100dvh; overflow:hidden; }
+
+  /* === НАВИГАЦИЯ === */
+  #nav { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--border); display:flex; z-index:100; padding-bottom:var(--safe-bottom); }
+  .nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:10px 0 8px; cursor:pointer; color:var(--text-muted); font-size:10px; border:none; background:none; transition:color .2s; }
+  .nav-btn.active { color:var(--amber); }
+  .nav-btn svg { width:22px; height:22px; }
+
+  /* === ЭКРАНЫ === */
+  .screen { position:fixed; inset:0; bottom:calc(56px + var(--safe-bottom)); display:none; overflow-y:auto; }
+  .screen.active { display:block; }
+
+  /* === КАРТА === */
+  #map { width:100%; height:100%; }
+  #map-screen { padding:0; }
+
+  /* === ШАПКА КАРТЫ === */
+  #map-header { position:fixed; top:0; left:0; right:0; z-index:500; background:linear-gradient(180deg,rgba(12,23,20,.95) 0%,rgba(12,23,20,0) 100%); padding:14px 16px 24px; pointer-events:none; }
+  #map-header h1 { font-size:16px; font-weight:700; letter-spacing:.05em; color:var(--text); }
+  #map-header span { font-size:12px; color:var(--text-muted); }
+
+  /* === КАРТОЧКА ЛОКАЦИИ === */
+  #location-sheet { position:fixed; bottom:calc(56px + var(--safe-bottom)); left:0; right:0; background:var(--surface); border-top:2px solid var(--amber); border-radius:20px 20px 0 0; transform:translateY(100%); transition:transform .35s cubic-bezier(.4,0,.2,1); z-index:400; max-height:65vh; overflow-y:auto; }
+  #location-sheet.open { transform:translateY(0); }
+  .sheet-handle { width:40px; height:4px; background:var(--border); border-radius:2px; margin:12px auto 0; }
+  .sheet-body { padding:16px; }
+  .sheet-type { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--amber); margin-bottom:6px; }
+  .sheet-name { font-size:20px; font-weight:700; margin-bottom:4px; }
+  .sheet-history { font-size:13px; color:var(--text-muted); line-height:1.6; margin:10px 0; }
+  .sheet-species-title { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); margin:14px 0 8px; }
+  .species-chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { padding:5px 10px; border-radius:20px; font-size:12px; background:var(--card); border:1px solid var(--border); }
+  .chip.found { border-color:var(--amber); color:var(--amber); }
+
+  /* === АТЛАС === */
+  #atlas-screen { padding:0 0 8px; }
+  .atlas-header { padding:16px 16px 8px; }
+  .atlas-header h2 { font-size:18px; font-weight:700; }
+  .atlas-counter { font-size:13px; color:var(--text-muted); margin-top:2px; }
+  .atlas-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:2px; padding:2px; }
+  .atlas-card { aspect-ratio:1; background:var(--card); border-radius:4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; position:relative; overflow:hidden; border:1px solid var(--border); transition:border-color .2s; }
+  .atlas-card.found { border-color:var(--amber); }
+  .atlas-card.rare { border-color:var(--rare); }
+  .atlas-card-icon { font-size:30px; }
+  .atlas-card-name { font-size:9px; color:var(--text-muted); text-align:center; padding:0 4px; line-height:1.3; }
+  .atlas-card.found .atlas-card-name { color:var(--text); }
+  .atlas-card-badge { position:absolute; top:4px; right:4px; font-size:10px; }
+  .atlas-card-lock { font-size:20px; color:var(--border); }
+
+  /* === ДЕТАЛЬНАЯ КАРТОЧКА ВИДА === */
+  #species-modal { position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:600; display:none; align-items:flex-end; }
+  #species-modal.open { display:flex; }
+  .species-card { background:var(--surface); border-radius:24px 24px 0 0; width:100%; padding:20px; padding-bottom:calc(20px + var(--safe-bottom)); max-height:80vh; overflow-y:auto; }
+  .species-latin { font-style:italic; color:var(--text-muted); font-size:14px; margin-bottom:2px; }
+  .species-name { font-size:24px; font-weight:700; margin-bottom:12px; }
+  .species-icon-big { font-size:64px; text-align:center; margin:12px 0; }
+  .species-fact-label { font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--amber); margin-bottom:6px; }
+  .species-fact { font-size:14px; line-height:1.7; color:var(--text-muted); }
+  .species-rarity { display:inline-block; padding:4px 10px; border-radius:12px; font-size:11px; margin-top:12px; }
+  .rarity-common { background:#1E3A2A; color:#4CAF50; }
+  .rarity-uncommon { background:#2A2A1E; color:#F4A435; }
+  .rarity-rare { background:#2A1E2A; color:var(--rare); }
+  .species-found-tag { display:flex; align-items:center; gap:6px; margin-top:14px; font-size:13px; color:var(--amber); }
+
+  /* === КВЕСТЫ === */
+  #quests-screen { padding:16px; }
+  #quests-screen h2 { font-size:18px; font-weight:700; margin-bottom:16px; }
+  .quest-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:10px; }
+  .quest-card.secret { border-color:var(--amber-dim); }
+  .quest-title { font-size:15px; font-weight:600; margin-bottom:4px; }
+  .quest-desc { font-size:12px; color:var(--text-muted); line-height:1.5; }
+  .quest-meta { display:flex; align-items:center; gap:8px; margin-top:10px; }
+  .quest-zone { font-size:10px; color:var(--amber); background:rgba(244,164,53,.1); padding:3px 8px; border-radius:10px; }
+  .quest-reward { font-size:10px; color:var(--text-muted); margin-left:auto; }
+  .quest-lock { font-size:18px; margin-left:auto; }
+
+  /* === ПРОФИЛЬ === */
+  #profile-screen { padding:20px; }
+  .profile-name { font-size:22px; font-weight:700; margin-bottom:2px; }
+  .profile-level { font-size:13px; color:var(--amber); margin-bottom:20px; }
+  .stat-row { display:flex; gap:10px; margin-bottom:16px; }
+  .stat-box { flex:1; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; text-align:center; }
+  .stat-num { font-size:28px; font-weight:700; color:var(--amber); }
+  .stat-label { font-size:11px; color:var(--text-muted); margin-top:2px; }
+  .progress-bar-wrap { background:var(--card); border-radius:14px; padding:14px; margin-bottom:16px; }
+  .pb-label { font-size:12px; color:var(--text-muted); margin-bottom:8px; display:flex; justify-content:space-between; }
+  .pb-track { height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+  .pb-fill { height:100%; background:var(--amber); border-radius:3px; transition:width .5s; }
+  .mode-selector { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; }
+  .mode-title { font-size:12px; color:var(--text-muted); margin-bottom:10px; }
+  .mode-options { display:flex; gap:8px; }
+  .mode-opt { flex:1; padding:8px; border-radius:10px; border:1px solid var(--border); font-size:11px; text-align:center; cursor:pointer; color:var(--text-muted); }
+  .mode-opt.active { border-color:var(--amber); color:var(--amber); background:rgba(244,164,53,.08); }
+
+  /* === КАМЕРА (FAB) === */
+  #fab { position:fixed; bottom:calc(70px + var(--safe-bottom)); right:18px; width:54px; height:54px; border-radius:27px; background:var(--amber); border:none; cursor:pointer; z-index:300; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 20px rgba(244,164,53,.4); transition:transform .15s; }
+  #fab:active { transform:scale(.94); }
+  #file-input { display:none; }
+
+  /* === УВЕДОМЛЕНИЕ === */
+  #toast { position:fixed; top:16px; left:16px; right:16px; background:var(--card); border:1px solid var(--amber); border-radius:14px; padding:14px 16px; z-index:700; transform:translateY(-120%); transition:transform .3s; font-size:14px; box-shadow:0 8px 30px rgba(0,0,0,.5); }
+  #toast.show { transform:translateY(0); }
+  #toast .toast-title { font-weight:700; color:var(--amber); margin-bottom:4px; }
+
+  /* === СПИННЕР === */
+  #spinner { position:fixed; inset:0; background:rgba(12,23,20,.85); z-index:800; display:none; align-items:center; justify-content:center; flex-direction:column; gap:14px; }
+  #spinner.show { display:flex; }
+  .spin { width:40px; height:40px; border:3px solid var(--border); border-top-color:var(--amber); border-radius:50%; animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .spin-text { font-size:14px; color:var(--text-muted); }
+
+  .leaflet-container { background:#0C1714; }
+</style>
+</head>
+<body>
+
+<!-- КАРТА -->
+<div id="map-screen" class="screen active">
+  <div id="map-header">
+    <h1>СЛЕДОПЫТ</h1>
+    <span>Калининград · <span id="map-counter">0</span> видов найдено</span>
+  </div>
+  <div id="map"></div>
+</div>
+
+<!-- АТЛАС -->
+<div id="atlas-screen" class="screen">
+  <div class="atlas-header">
+    <h2>Атлас видов</h2>
+    <div class="atlas-counter" id="atlas-counter-text">0 из 18 обнаружено</div>
+  </div>
+  <div class="atlas-grid" id="atlas-grid"></div>
+</div>
+
+<!-- КВЕСТЫ -->
+<div id="quests-screen" class="screen">
+  <h2>Квесты</h2>
+  <div id="quest-list"></div>
+</div>
+
+<!-- ПРОФИЛЬ -->
+<div id="profile-screen" class="screen">
+  <div class="profile-name" id="profile-name">Следопыт</div>
+  <div class="profile-level" id="profile-level">Уровень 1 · Наблюдатель</div>
+  <div class="stat-row">
+    <div class="stat-box"><div class="stat-num" id="stat-found">0</div><div class="stat-label">Видов найдено</div></div>
+    <div class="stat-box"><div class="stat-num" id="stat-points">0</div><div class="stat-label">Очков</div></div>
+  </div>
+  <div class="progress-bar-wrap">
+    <div class="pb-label"><span>До следующего уровня</span><span id="pb-label-right">50 очков</span></div>
+    <div class="pb-track"><div class="pb-fill" id="pb-fill" style="width:0%"></div></div>
+  </div>
+  <div class="mode-selector">
+    <div class="mode-title">Режим исследования</div>
+    <div class="mode-options">
+      <div class="mode-opt" data-mode="child">Детский</div>
+      <div class="mode-opt active" data-mode="family">Семейный</div>
+      <div class="mode-opt" data-mode="expert">Эксперт</div>
+    </div>
+  </div>
+</div>
+
+<!-- НАВИГАЦИЯ -->
+<nav id="nav">
+  <button class="nav-btn active" data-screen="map-screen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7"/></svg>
+    Карта
+  </button>
+  <button class="nav-btn" data-screen="atlas-screen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+    Атлас
+  </button>
+  <button class="nav-btn" data-screen="quests-screen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+    Квесты
+  </button>
+  <button class="nav-btn" data-screen="profile-screen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+    Профиль
+  </button>
+</nav>
+
+<!-- FAB КАМЕРА -->
+<button id="fab" title="Определить вид">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0C1714" stroke-width="2.2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+</button>
+<input type="file" id="file-input" accept="image/*" capture="environment">
+
+<!-- КАРТОЧКА ЛОКАЦИИ -->
+<div id="location-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-body">
+    <div class="sheet-type" id="sheet-type"></div>
+    <div class="sheet-name" id="sheet-name"></div>
+    <div class="sheet-history" id="sheet-history"></div>
+    <div class="sheet-species-title">Виды на этой локации</div>
+    <div class="species-chips" id="sheet-chips"></div>
+  </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО ВИДА -->
+<div id="species-modal" onclick="closeSpeciesModal(event)">
+  <div class="species-card" id="species-card-inner">
+    <div class="species-latin" id="sm-latin"></div>
+    <div class="species-name" id="sm-name"></div>
+    <div class="species-icon-big" id="sm-icon"></div>
+    <div class="species-fact-label">Интересный факт</div>
+    <div class="species-fact" id="sm-fact"></div>
+    <div id="sm-rarity"></div>
+    <div id="sm-found-tag"></div>
+  </div>
+</div>
+
+<!-- УВЕДОМЛЕНИЕ -->
+<div id="toast">
+  <div class="toast-title" id="toast-title"></div>
+  <div id="toast-body"></div>
+</div>
+
+<!-- СПИННЕР -->
+<div id="spinner">
+  <div class="spin"></div>
+  <div class="spin-text" id="spinner-text">Анализирую фото...</div>
+</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+// === ДАННЫЕ ===
+const SPECIES = [
+  { id:'ivy',      icon:'🌿', nameRu:'Плющ обыкновенный',     nameLatin:'Hedera helix',            zone:'ponarth', rarity:'common',   fact:'Может жить 400–500 лет. Плющ на стенах Понарта — ровесник пивоварни 1849 года.' },
+  { id:'moss',     icon:'🟢', nameRu:'Мох стенной',            nameLatin:'Bryum argenteum',          zone:'ponarth', rarity:'common',   fact:'Может ожить после 40 лет высыхания. Первый заселяет голый камень.' },
+  { id:'lichen',   icon:'🟡', nameRu:'Ксантория настенная',    nameLatin:'Xanthoria parietina',      zone:'ponarth', rarity:'common',   fact:'Симбиоз гриба и водоросли. Не растение. Живёт до 1000 лет.' },
+  { id:'celandine',icon:'🌼', nameRu:'Чистотел большой',       nameLatin:'Chelidonium majus',        zone:'ponarth', rarity:'common',   fact:'Оранжевый сок при надломе — природный антисептик, но токсичен.' },
+  { id:'nettle',   icon:'🌱', nameRu:'Крапива двудомная',      nameLatin:'Urtica dioica',            zone:'ponarth', rarity:'common',   fact:'Растёт у старых поселений — индикатор богатой азотом почвы.' },
+  { id:'hop',      icon:'🍃', nameRu:'Хмель обыкновенный',     nameLatin:'Humulus lupulus',          zone:'ponarth', rarity:'rare',     fact:'Если найдёшь у пивоварни Понарт — это не случайность. Растение для пива рядом с пивоварней 1849 года.' },
+  { id:'fireweed', icon:'🌸', nameRu:'Иван-чай',               nameLatin:'Epilobium angustifolium',  zone:'ponarth', rarity:'common',   fact:'Первым заселяет пожарища и разрушенные места. После войны — он первый.' },
+  { id:'wormwood', icon:'🌾', nameRu:'Полынь горькая',         nameLatin:'Artemisia absinthium',     zone:'ponarth', rarity:'common',   fact:'Абсент делают из полыни. Горечь — защита от поедания.' },
+  { id:'tansy',    icon:'💛', nameRu:'Пижма обыкновенная',     nameLatin:'Tanacetum vulgare',        zone:'ponarth', rarity:'common',   fact:'Запах отпугивает насекомых. Раньше клали в сундуки вместо нафталина.' },
+  { id:'elder',    icon:'🫐', nameRu:'Бузина чёрная',          nameLatin:'Sambucus nigra',           zone:'ponarth', rarity:'common',   fact:'В Средние века считалась магическим деревом. Из ягод — сироп и вино.' },
+  { id:'burdock',  icon:'🌀', nameRu:'Лопух большой',          nameLatin:'Arctium lappa',            zone:'ponarth', rarity:'common',   fact:'Прообраз застёжки-липучки. Изобретатель Велькро придумал её глядя на лопух.' },
+  { id:'linden',   icon:'🌳', nameRu:'Липа мелколистная',      nameLatin:'Tilia cordata',            zone:'ponarth', rarity:'common',   fact:'80–100 лет. Их сажали горожане Кёнигсберга. Дерево двух народов.' },
+  { id:'maple-ash',icon:'🍂', nameRu:'Клён ясенелистный',      nameLatin:'Acer negundo',             zone:'city',    rarity:'common',   fact:'Агрессивный пришелец из США. Завезён в СССР, теперь вытесняет местные виды.' },
+  { id:'hogweed',  icon:'⚠️', nameRu:'Борщевик Сосновского',   nameLatin:'Heracleum sosnowskyi',    zone:'city',    rarity:'common',   fact:'ОПАСЕН! Сок + солнце = ожог 3 степени. Завезён как кормовое, стал главным инвазивным видом.' },
+  { id:'stonecrop',icon:'⭐', nameRu:'Очиток едкий',           nameLatin:'Sedum acre',               zone:'ponarth', rarity:'uncommon', fact:'Суккулент — хранит воду в листьях. Растёт в трещинах где нет больше ничего.' },
+  { id:'rosehip',  icon:'🌹', nameRu:'Шиповник майский',       nameLatin:'Rosa canina',              zone:'ponarth', rarity:'uncommon', fact:'Плоды содержат витамина С в 40 раз больше чем лимон.' },
+  { id:'lilac',    icon:'💜', nameRu:'Сирень обыкновенная',    nameLatin:'Syringa vulgaris',         zone:'ponarth', rarity:'uncommon', fact:'Одичавшие кусты у старых домов — живые следы жизни до 1945 года.' },
+  { id:'plantain', icon:'🟤', nameRu:'Подорожник большой',     nameLatin:'Plantago major',           zone:'city',    rarity:'common',   fact:'Растёт только там где ходят люди. По нему можно найти старые тропы.' }
+];
+
+const LOCATIONS = [
+  { id:'ponarth',     name:'Пивоварня Понарт', type:'Особая локация', lat:54.6905, lng:20.5185, color:'#F4A435', history:'Основана в 1849 году. Старейшее промышленное предприятие района. Немецкие рабочие ходили по этим кирпичным стенам 175 лет назад.', speciesIds:['ivy','moss','lichen','celandine','nettle','hop','stonecrop','rosehip','lilac','elder'] },
+  { id:'kant',        name:'Остров Канта',     type:'Исторический',   lat:54.7065, lng:20.5120, color:'#7EB8F7', history:'Кнайпхоф — средневековый район Кёнигсберга. Кафедральный собор 1333 г. Могила Иммануила Канта.', speciesIds:['ivy','moss','linden','fireweed'] },
+  { id:'upper_lake',  name:'Верхнее озеро',    type:'Природная зона', lat:54.7180, lng:20.4980, color:'#4FC3F7', history:'Главный водоём Кёнигсберга с 1256 года. Лучшее место для наблюдения птиц в центре города.', speciesIds:['plantain','linden','wormwood'] },
+  { id:'fort5',       name:'Форт №5',          type:'Исторический',   lat:54.7380, lng:20.4560, color:'#CE93D8', history:'1878 год. Часть фортового кольца. Бои апреля 1945. В казематах — колония летучих мышей.', speciesIds:['moss','lichen'] }
+];
+
+const QUESTS = [
+  { id:'q1', title:'Живые стены Понарта', zone:'Понарт', desc:'Найди плющ, мох и лишайник на одной стене пивоварни. Три разных организма на одном кирпиче — это целая экосистема.', reward:'+150 очков', secret:false },
+  { id:'q2', title:'Тайна старой пивоварни ⭐', zone:'Понарт', desc:'Найди хмель рядом со стенами Понарта. Растение для пива, выросшее у пивоварни 1849 года — случайность?', reward:'+500 очков + значок', secret:false },
+  { id:'q3', title:'Детектив XIX века', zone:'Понарт', desc:'Найди кирпич с клеймом завода-производителя. По клейму можно определить год постройки стены.', reward:'+200 очков', secret:false },
+  { id:'q4', title:'🔐 Ночной наблюдатель', zone:'Форт №5', desc:'???', reward:'???', secret:true },
+  { id:'q5', title:'Дерево двух народов', zone:'Понарт', desc:'Найди липу с обхватом ствола больше двух рук. Ей 80–100 лет — её сажали горожане Кёнигсберга.', reward:'+100 очков', secret:false },
+  { id:'q6', title:'🔐 Инвазивный детектив', zone:'Город', desc:'???', reward:'???', secret:true }
+];
+
+// === СОСТОЯНИЕ ===
+const state = {
+  found: JSON.parse(localStorage.getItem('sledopyt_found') || '[]'),
+  points: parseInt(localStorage.getItem('sledopyt_points') || '0'),
+  level: parseInt(localStorage.getItem('sledopyt_level') || '1'),
+  mode: localStorage.getItem('sledopyt_mode') || 'family',
+  userName: tg?.initDataUnsafe?.user?.first_name || 'Следопыт'
+};
+
+function saveState() {
+  localStorage.setItem('sledopyt_found', JSON.stringify(state.found));
+  localStorage.setItem('sledopyt_points', state.points);
+  localStorage.setItem('sledopyt_level', state.level);
+  localStorage.setItem('sledopyt_mode', state.mode);
+}
+
+const LEVEL_NAMES = ['', 'Наблюдатель', 'Следопыт', 'Натуралист', 'Исследователь', 'Учёный'];
+const LEVEL_THRESHOLDS = [0, 0, 200, 500, 1000, 2000];
+
+function calcLevel(pts) {
+  let lvl = 1;
+  for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) if (pts >= LEVEL_THRESHOLDS[i]) lvl = i;
+  return lvl;
+}
+
+// === КАРТА ===
+let map;
+function initMap() {
+  map = L.map('map', { zoomControl:false, attributionControl:false }).setView([54.710, 20.508], 13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom:19 }).addTo(map);
+
+  LOCATIONS.forEach(loc => {
+    const marker = L.circleMarker([loc.lat, loc.lng], {
+      radius: loc.id === 'ponarth' ? 14 : 10,
+      fillColor: loc.color,
+      color: loc.id === 'ponarth' ? '#fff' : loc.color,
+      weight: loc.id === 'ponarth' ? 2 : 1,
+      fillOpacity: 0.9
+    }).addTo(map);
+
+    const label = L.divIcon({
+      html: `<div style="color:${loc.color};font-size:11px;font-weight:700;white-space:nowrap;text-shadow:0 1px 3px #000">${loc.name}</div>`,
+      iconAnchor: [-16, 8], className:''
+    });
+    L.marker([loc.lat, loc.lng], { icon: label }).addTo(map);
+    marker.on('click', () => openLocationSheet(loc));
+  });
+}
+
+function openLocationSheet(loc) {
+  document.getElementById('sheet-type').textContent = loc.type;
+  document.getElementById('sheet-name').textContent = loc.name;
+  document.getElementById('sheet-history').textContent = loc.history;
+  const chips = document.getElementById('sheet-chips');
+  chips.innerHTML = loc.speciesIds.map(sid => {
+    const sp = SPECIES.find(s => s.id === sid);
+    const found = state.found.includes(sid);
+    return `<div class="chip ${found ? 'found' : ''}" onclick="openSpeciesModal('${sid}')">${sp.icon} ${sp.nameRu}</div>`;
+  }).join('');
+  document.getElementById('location-sheet').classList.add('open');
+}
+
+document.getElementById('map').addEventListener('click', e => {
+  if (e.target === document.getElementById('map') || e.target.closest('.leaflet-container:not(.leaflet-popup)'))
+    document.getElementById('location-sheet').classList.remove('open');
+});
+
+// === АТЛАС ===
+function renderAtlas() {
+  const grid = document.getElementById('atlas-grid');
+  const found = state.found.length;
+  document.getElementById('atlas-counter-text').textContent = `${found} из ${SPECIES.length} обнаружено`;
+  document.getElementById('map-counter').textContent = found;
+
+  grid.innerHTML = SPECIES.map(sp => {
+    const isFound = state.found.includes(sp.id);
+    const rarityClass = sp.rarity !== 'common' ? 'rare' : '';
+    return `<div class="atlas-card ${isFound ? 'found' : ''} ${rarityClass}" onclick="openSpeciesModal('${sp.id}')">
+      ${isFound ? `<div class="atlas-card-icon">${sp.icon}</div>` : `<div class="atlas-card-lock">?</div>`}
+      <div class="atlas-card-name">${isFound ? sp.nameRu : '???'}</div>
+      ${sp.rarity === 'rare' ? '<div class="atlas-card-badge">⭐</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+// === КВЕСТЫ ===
+function renderQuests() {
+  document.getElementById('quest-list').innerHTML = QUESTS.map(q => `
+    <div class="quest-card ${q.secret ? 'secret' : ''}">
+      <div class="quest-title">${q.title}</div>
+      <div class="quest-desc">${q.secret ? '🔒 Квест разблокируется при особых условиях...' : q.desc}</div>
+      <div class="quest-meta">
+        <div class="quest-zone">${q.zone}</div>
+        ${q.secret ? '<div class="quest-lock">🔒</div>' : `<div class="quest-reward">${q.reward}</div>`}
+      </div>
+    </div>`).join('');
+}
+
+// === ПРОФИЛЬ ===
+function renderProfile() {
+  const lvl = calcLevel(state.points);
+  state.level = lvl;
+  document.getElementById('profile-name').textContent = state.userName;
+  document.getElementById('profile-level').textContent = `Уровень ${lvl} · ${LEVEL_NAMES[lvl] || 'Учёный'}`;
+  document.getElementById('stat-found').textContent = state.found.length;
+  document.getElementById('stat-points').textContent = state.points;
+
+  const curr = LEVEL_THRESHOLDS[lvl] || 0;
+  const next = LEVEL_THRESHOLDS[lvl + 1] || curr + 500;
+  const pct = Math.min(100, Math.round((state.points - curr) / (next - curr) * 100));
+  document.getElementById('pb-fill').style.width = pct + '%';
+  document.getElementById('pb-label-right').textContent = `${next - state.points} до ур. ${lvl + 1}`;
+
+  document.querySelectorAll('.mode-opt').forEach(el => {
+    el.classList.toggle('active', el.dataset.mode === state.mode);
+  });
+}
+
+document.querySelectorAll('.mode-opt').forEach(el => {
+  el.addEventListener('click', () => { state.mode = el.dataset.mode; saveState(); renderProfile(); });
+});
+
+// === МОДАЛЬНОЕ ОКНО ВИДА ===
+function openSpeciesModal(id) {
+  const sp = SPECIES.find(s => s.id === id);
+  if (!sp) return;
+  const isFound = state.found.includes(id);
+  document.getElementById('sm-latin').textContent = sp.nameLatin;
+  document.getElementById('sm-name').textContent = sp.nameRu;
+  document.getElementById('sm-icon').textContent = isFound ? sp.icon : '🔍';
+  document.getElementById('sm-fact').textContent = isFound ? sp.fact : 'Найди этот вид чтобы узнать интересный факт';
+  const rarityLabels = { common:'Обычный', uncommon:'Редкий', rare:'Очень редкий' };
+  const rarityClasses = { common:'rarity-common', uncommon:'rarity-uncommon', rare:'rarity-rare' };
+  document.getElementById('sm-rarity').innerHTML = `<span class="species-rarity ${rarityClasses[sp.rarity]}">${rarityLabels[sp.rarity]}</span>`;
+  document.getElementById('sm-found-tag').innerHTML = isFound
+    ? '<div class="species-found-tag">✓ В твоём Атласе</div>'
+    : '<div style="color:var(--text-muted);font-size:13px;margin-top:12px;">Сфотографируй чтобы добавить в Атлас</div>';
+  document.getElementById('species-modal').classList.add('open');
+}
+
+function closeSpeciesModal(e) {
+  if (e.target === document.getElementById('species-modal')) document.getElementById('species-modal').classList.remove('open');
+}
+
+// === НАВИГАЦИЯ ===
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.screen).classList.add('active');
+    document.getElementById('location-sheet').classList.remove('open');
+    if (btn.dataset.screen === 'atlas-screen') renderAtlas();
+    if (btn.dataset.screen === 'quests-screen') renderQuests();
+    if (btn.dataset.screen === 'profile-screen') renderProfile();
+    if (btn.dataset.screen === 'map-screen') setTimeout(() => map?.invalidateSize(), 50);
+  });
+});
+
+// === КАМЕРА И ОПРЕДЕЛЕНИЕ ===
+document.getElementById('fab').addEventListener('click', () => document.getElementById('file-input').click());
+
+document.getElementById('file-input').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  e.target.value = '';
+
+  const spinner = document.getElementById('spinner');
+  spinner.classList.add('show');
+
+  try {
+    const base64 = await fileToBase64(file);
+    const res = await fetch('/api/identify', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ image: base64 })
+    });
+    const data = await res.json();
+    spinner.classList.remove('show');
+
+    if (data.found) {
+      const isNew = !state.found.includes(data.speciesId);
+      if (isNew && data.speciesId) {
+        state.found.push(data.speciesId);
+        state.points += data.rarity === 'rare' ? 500 : 50;
+        saveState();
+        renderAtlas();
+        renderProfile();
+      }
+      showToast(
+        isNew ? `🌟 Новый вид: ${data.nameRu}!` : `✓ ${data.nameRu}`,
+        isNew ? `${data.fact || ''}\n+${data.rarity === 'rare' ? 500 : 50} очков` : 'Уже в твоём Атласе'
+      );
+    } else {
+      showToast('🔍 Не распознано', data.hint || 'Попробуй сфотографировать крупнее — лист или цветок');
+    }
+  } catch {
+    spinner.classList.remove('show');
+    showToast('Ошибка', 'Проверь подключение к интернету');
+  }
+});
+
+function fileToBase64(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const max = 800;
+        let w = img.width, h = img.height;
+        if (w > max || h > max) { const r = Math.min(max/w, max/h); w = Math.round(w*r); h = Math.round(h*r); }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// === УВЕДОМЛЕНИЕ ===
+let toastTimer;
+function showToast(title, body) {
+  document.getElementById('toast-title').textContent = title;
+  document.getElementById('toast-body').textContent = body;
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+// === ИНИЦИАЛИЗАЦИЯ ===
+initMap();
+renderAtlas();
+renderQuests();
+renderProfile();
+</script>
+</body>
+</html>
