@@ -218,6 +218,14 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 .anim-slide{animation:slideUp .25s ease-out}
 
+/* CITY SELECTOR */
+#city-selector{position:fixed;inset:0;background:var(--bg);z-index:1000;display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px}
+.city-card{background:var(--card);border:2px solid var(--brd);border-radius:18px;padding:20px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:all .2s;width:100%;max-width:320px}
+.city-card:active{transform:scale(.97);border-color:var(--amber)}
+.city-card-icon{font-size:40px;flex-shrink:0}
+.city-card-name{font-size:20px;font-weight:700;margin-bottom:4px}
+.city-card-desc{font-size:12px;color:var(--muted);line-height:1.5}
+
 /* MISC */
 .divider{height:1px;background:var(--brd);margin:16px 0}
 .leaflet-container{background:var(--bg)}
@@ -228,7 +236,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 
 <!-- MAP SCREEN -->
 <div id="map-screen" class="screen active">
-  <div id="mh"><h1>СЛЕДОПЫТ</h1><span>Калининград · <span id="mc">0</span> найдено</span></div>
+  <div id="mh"><h1>СЛЕДОПЫТ</h1><span><span id="city-name-display">Калининград</span> · <span id="mc">0</span> найдено</span></div>
   <div id="map"></div>
 </div>
 
@@ -267,6 +275,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <div class="mopt active" data-mode="family">Семейный</div>
       <div class="mopt" data-mode="expert">Эксперт</div>
     </div>
+  </div>
+  <div class="mode-card">
+    <div class="mode-title">Город исследования</div>
+    <div id="city-switch-name" style="font-size:16px;font-weight:700;margin-bottom:10px"></div>
+    <button class="btn btn-secondary" style="width:auto;padding:10px 20px;font-size:13px" onclick="showCitySelector()">🗺️ Сменить город</button>
   </div>
 </div>
 
@@ -344,6 +357,22 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   <button class="btn btn-primary" style="margin-top:24px;max-width:280px" onclick="closeQC()">Продолжить</button>
 </div>
 
+<!-- CITY SELECTOR -->
+<div id="city-selector">
+  <div style="font-size:28px;font-weight:700;margin-bottom:8px;text-align:center">Выбери свой город</div>
+  <div style="font-size:14px;color:var(--muted);margin-bottom:36px;text-align:center">Исследуй природу и историю</div>
+  <div style="display:flex;flex-direction:column;gap:14px;width:100%;max-width:320px">
+    <div class="city-card" onclick="selectCity('kaliningrad')">
+      <div class="city-card-icon">🏰</div>
+      <div><div class="city-card-name">Калининград</div><div class="city-card-desc">Кёнигсберг · Янтарный берег · История Тевтонского ордена</div></div>
+    </div>
+    <div class="city-card" onclick="selectCity('sochi')">
+      <div class="city-card-icon">🌴</div>
+      <div><div class="city-card-name">Сочи</div><div class="city-card-desc">Субтропики · Кавказ · Олимпийская столица 2014</div></div>
+    </div>
+  </div>
+</div>
+
 <!-- SPINNER -->
 <div id="spinner"><div class="spin"></div><div class="spin-txt" id="spin-txt">Анализирую...</div></div>
 
@@ -383,7 +412,16 @@ const SPECIES=[
   {id:'stonecrop',icon:'⭐',nameRu:'Очиток едкий',nameLatin:'Sedum acre',zone:'ponarth',rarity:'uncommon',description:'Маленький (5–15 см). Мясистые листочки. Жёлтые цветки.',fact:'Суккулент — хранит воду в листьях. Растёт в трещинах где ничего нет.',where:'Трещины в кирпичных стенах и брусчатке'},
   {id:'rosehip',icon:'🌹',nameRu:'Шиповник майский',nameLatin:'Rosa canina',zone:'ponarth',rarity:'uncommon',description:'Колючий кустарник. Розовые цветки. Красные плоды.',fact:'Плоды содержат витамина С в 40 раз больше чем лимон.',where:'Старые дворы у Понарт'},
   {id:'lilac',icon:'💜',nameRu:'Сирень обыкновенная',nameLatin:'Syringa vulgaris',zone:'ponarth',rarity:'uncommon',description:'Крупные листья. Фиолетовые метёлки в мае.',fact:'Одичавшие кусты у старых домов — живые следы жизни до 1945 года.',where:'Старые дворы вокруг Понарт'},
-  {id:'plantain',icon:'🟤',nameRu:'Подорожник большой',nameLatin:'Plantago major',zone:'city',rarity:'common',description:'Широкие овальные листья с дугообразными жилками.',fact:'Растёт только там где ходят люди. По нему можно найти старые тропы.',where:'Вытоптанные тропы, щели в брусчатке'}
+  {id:'plantain',icon:'🟤',nameRu:'Подорожник большой',nameLatin:'Plantago major',zone:'city',rarity:'common',description:'Широкие овальные листья с дугообразными жилками.',fact:'Растёт только там где ходят люди. По нему можно найти старые тропы.',where:'Вытоптанные тропы, щели в брусчатке'},
+
+  // === СОЧИ ===
+  {id:'samshit',icon:'🌲',nameRu:'Самшит колхидский',nameLatin:'Buxus colchica',city:'sochi',rarity:'rare',description:'Медленнорастущий вечнозелёный кустарник-дерево с мелкими кожистыми листьями. Древесина тонет в воде.',fact:'Реликт третичного периода — рос здесь ещё во времена динозавров. Занесён в Красную книгу. Живёт до 600 лет.',where:'Агурское ущелье, тенистые склоны рек ЭБЦ'},
+  {id:'magnolia',icon:'🌺',nameRu:'Магнолия крупноцветковая',nameLatin:'Magnolia grandiflora',city:'sochi',rarity:'uncommon',description:'Вечнозелёное дерево до 30м. Листья до 20 см, кожистые. Цветки огромные — до 30 см.',fact:'Магнолии древнее пчёл. 90 миллионов лет назад их опыляли жуки — пчёл ещё не было.',where:'Сочинский дендрарий, набережная, парки'},
+  {id:'rhododendron',icon:'🌸',nameRu:'Рododendron понтийский',nameLatin:'Rhododendron ponticum',city:'sochi',rarity:'uncommon',description:'Вечнозелёный кустарник до 5м. Крупные лиловые цветки в мае-июне.',fact:'Мёд из его цветков ядовит — «бешеный мёд» вызывает галлюцинации. Знали ещё скифы.',where:'Горные склоны, Роза Хутор, Красная Поляна'},
+  {id:'palm_sochi',icon:'🌴',nameRu:'Пальма трахикарпус',nameLatin:'Trachycarpus fortunei',city:'sochi',rarity:'common',description:'Морозостойкая пальма с вееровидными листьями. Ствол покрыт бурыми волокнами.',fact:'Единственная пальма, зимующая на улице в России. Выносит морозы до -15°C.',where:'Набережные, парки и дворы по всему Сочи'},
+  {id:'laurel',icon:'🍃',nameRu:'Лавровишня лекарственная',nameLatin:'Prunus laurocerasus',city:'sochi',rarity:'common',description:'Вечнозелёный кустарник с глянцевыми листьями и мелкими белыми цветками.',fact:'Листья содержат синильную кислоту, но при этом это популярное декоративное растение для живых изгородей.',where:'Подлесок в горах, изгороди и парки'},
+  {id:'fern_sochi',icon:'🌿',nameRu:'Страусник обыкновенный',nameLatin:'Matteuccia struthiopteris',city:'sochi',rarity:'common',description:'Крупный папоротник до 1.5м. Вайи-листья похожи на страусиные перья — раскрываются розеткой.',fact:'Молодые свёрнутые побеги («рахисы») съедобны — в Японии это деликатес «косэнмай».',where:'Агурское ущелье, влажные тенистые склоны'},
+  {id:'fig',icon:'🍈',nameRu:'Инжир (смоковница)',nameLatin:'Ficus carica',city:'sochi',rarity:'common',description:'Листопадное дерево с широкими лопастными листьями и сладкими плодами.',fact:'Опыляется только осой-бластофагой, которая откладывает яйца внутрь соцветия. Без неё — нет семян.',where:'Дворы, заброшенные участки, горные склоны до 800м'}
 ];
 
 const LOCATIONS=[
@@ -396,7 +434,16 @@ const LOCATIONS=[
   {id:'bunker',name:'Бункер Ляша',nameShort:'Бункер',lat:54.7085,lng:20.5025,color:'#78909C',icon:'🏚️',type:'history',history:'Командный бункер коменданта Кёнигсберга генерала Отто Ляша. 9 апреля 1945 здесь была подписана капитуляция — конец 700-летней истории Кёнигсберга.',speciesIds:['moss'],questIds:['bunker_explore','bunker_quiz_date']},
   {id:'world_ocean',name:'Музей Мирового океана',nameShort:'Муз. океана',lat:54.7009,lng:20.5136,color:'#29B6F6',icon:'🚢',type:'culture',history:'Единственный в России музей такого масштаба. Суда у набережной: подводная лодка Б-413, рыболовный траулер, НИС «Космонавт Виктор Пацаев». Основан в 1990 году.',speciesIds:[],questIds:['ocean_explore','ocean_quiz_sub']},
   {id:'brandenburger',name:'Бранденбургские ворота',nameShort:'Бр. ворота',lat:54.7089,lng:20.5067,color:'#A5D6A7',icon:'🚪',type:'history',history:'Единственные в мире средневековые городские ворота, до сих пор используемые по назначению. Построены в 1657 году. На фасаде — барельефы прусских военачальников.',speciesIds:['ivy','moss','lichen'],questIds:['brand_photo','brand_quiz','brand_ivy_find']},
-  {id:'friedland',name:'Фридландские ворота',nameShort:'Фр. ворота',lat:54.6978,lng:20.5048,color:'#FFCC02',icon:'🚪',type:'history',history:'Лучший музей среди семи сохранившихся ворот Кёнигсберга. Уникальная экспозиция о жизни горожан XIX-начала XX века.',speciesIds:['ivy','moss'],questIds:['friedland_explore','friedland_quiz']}
+  {id:'friedland',name:'Фридландские ворота',nameShort:'Фр. ворота',lat:54.6978,lng:20.5048,color:'#FFCC02',icon:'🚪',type:'history',history:'Лучший музей среди семи сохранившихся ворот Кёнигсберга. Уникальная экспозиция о жизни горожан XIX-начала XX века.',speciesIds:['ivy','moss'],questIds:['friedland_explore','friedland_quiz']},
+
+  // === СОЧИ ===
+  {id:'ebc_sokolova',name:'ЭБЦ им. Соколова',nameShort:'ЭБЦ',lat:43.570,lng:39.737,color:'#4CAF50',icon:'🌿',city:'sochi',type:'ecology',history:'Эколого-биологический центр им. Н.А. Соколова — главный методический центр экологического образования Сочи. Коллекции субтропических растений, живой уголок, питомники редких видов. Здесь тысячи школьников изучают уникальную природу черноморского побережья — единственного субтропического уголка России.',speciesIds:['samshit','laurel','fern_sochi','fig'],questIds:['ebc_explore','ebc_samshit_find','ebc_quiz_subtropics']},
+  {id:'dendrary',name:'Сочинский дендрарий',nameShort:'Дендрарий',lat:43.581,lng:39.727,color:'#81C784',icon:'🌳',city:'sochi',type:'ecology',history:'Основан в 1892 году журналистом Сергеем Худековым. 50 гектаров на берегу моря. Более 1800 видов деревьев и кустарников со всех континентов — Австралия, Япония, Чили, Гималаи. Канатная дорога поднимает на вершину холма с видом на море и горы. Федеральный памятник природы.',speciesIds:['magnolia','palm_sochi','laurel'],questIds:['dendrary_explore','dendrary_magnolia_photo','dendrary_quiz']},
+  {id:'rosa_khutor',name:'Роза Хутор',nameShort:'Роза Хутор',lat:43.671,lng:40.318,color:'#EF9A9A',icon:'⛷️',city:'sochi',type:'ecology',history:'Горнолыжный курорт на хребте Аибга. Высота — от 560 до 2320 метров. Олимпийские объекты 2014 года: трассы, канатные дороги, деревня спортсменов. Здесь за 20 минут на подъёмнике проезжаешь всю лестницу природных поясов — от субтропиков до альпийских лугов.',speciesIds:['rhododendron','fern_sochi'],questIds:['rosa_explore','rosa_rhododendron_photo','rosa_quiz_belts']},
+  {id:'krasnaya_polyana',name:'Красная Поляна',nameShort:'Кр. Поляна',lat:43.678,lng:40.202,color:'#FFAB91',icon:'🏔️',city:'sochi',type:'history',history:'Горный посёлок в долине реки Мзымта. До 1864 года — адыгский аул Кбааде. «Красной» назван по цветению рododendron, устилающего горные склоны лиловым. В 1898 году здесь охотился Николай II. Кавказская война закончилась именно в этих горах.',speciesIds:['rhododendron'],questIds:['kp_explore','kp_quiz_history']},
+  {id:'imeretinka',name:'Имеретинская низменность',nameShort:'Имеретинка',lat:43.407,lng:39.965,color:'#90CAF9',icon:'🏅',city:'sochi',type:'culture',history:'Бывшие болота в устье реки Мзымты. Веками здесь ловили рыбу адыгские рыбаки. Осушены в XX веке. В 2014 году здесь прошли зимние Олимпийские игры — в 500 метрах от субтропического моря. Рядом — Имеретинский природный заказник, перевалочный пункт для миллионов мигрирующих птиц.',speciesIds:['palm_sochi'],questIds:['imer_explore','imer_quiz_olympics','imer_ecology']},
+  {id:'agur_waterfall',name:'Агурские водопады',nameShort:'Агурск. водоп.',lat:43.549,lng:39.800,color:'#81D4FA',icon:'💧',city:'sochi',type:'ecology',history:'Три каскада водопадов на реке Агура. Нижний — 23 метра, средний — 21, верхний — 30 метров. Выше по ущелью — скала Орёл (506м) со статуей Прометея. Ущелье хранит реликтовый самшитовый лес — памятник природы, которому миллионы лет.',speciesIds:['samshit','fern_sochi'],questIds:['agur_explore','agur_waterfall_photo','agur_samshit_find']},
+  {id:'vorontsov_caves',name:'Воронцовские пещеры',nameShort:'Пещеры',lat:43.700,lng:40.085,color:'#B39DDB',icon:'🦇',city:'sochi',type:'ecology',history:'Крупнейшая пещерная система Западного Кавказа: 11,7 км ходов, глубина 240 метров. Образована рекой за несколько миллионов лет. Сталактиты растут по 1 см в 100 лет. Зимой здесь спят тысячи летучих мышей — несколько видов, включая краснокнижного большого подковоноса.',speciesIds:[],questIds:['caves_explore','caves_quiz_speleothem','caves_bats_secret']}
 ];
 
 const QUESTS=[
@@ -633,15 +680,197 @@ const QUESTS=[
   {id:'friedland_quiz',locationId:'friedland',title:'Семь ворот',subtitle:'Тест о воротах Кёнигсберга',category:'history',type:'quiz',difficulty:2,points:150,icon:'🔢',isSecret:false,
    question:'Сколько ворот Кёнигсберга сохранилось до наших дней?',
    options:['3','5','7','9'],correctIndex:2,
-   explanation:'Из 9 ворот Кёнигсберга сохранилось 7: Бранденбургские, Фридландские, Королевские, Россгартенские, Закхаймские, Аусфальские и Железнодорожные. Они все находятся в Калининграде и доступны для посещения.'}
+   explanation:'Из 9 ворот Кёнигсберга сохранилось 7: Бранденбургские, Фридландские, Королевские, Россгартенские, Закхаймские, Аусфальские и Железнодорожные. Они все находятся в Калининграде и доступны для посещения.'},
+
+  // === СОЧИ — ЭБЦ ===
+  {id:'ebc_explore',locationId:'ebc_sokolova',title:'Субтропики России',subtitle:'Единственное место в стране',category:'ecology',type:'explore',difficulty:1,points:150,icon:'🌿',isSecret:false,
+   content:`Ты стоишь на Черноморском побережье, которое находится на той же широте, что Москва.
+
+Но в Москве зимой −15°C, а здесь — +5°C. Почему?
+
+За твоей спиной стоит Кавказский хребет — стена высотой 3000–4000 метров. Она блокирует холодные континентальные массы с севера. Тёплое Чёрное море нагревает воздух зимой.
+
+Это единственное место в России, где субтропические растения живут на улице без теплицы. Пальмы, бамбук, магнолии, эвкалипты — прямо в городе.
+
+В ЭБЦ дети изучают эту уникальную природу. Здесь живут растения, которые не встретишь нигде севернее.`,
+   question:'Почему в Сочи субтропический климат, хотя город на широте Москвы?',
+   options:['Тёплое Атлантическое течение','Горный хребет защищает от холодных северных ветров','Близость к экватору','Вулканическая активность в горах'],
+   correctIndex:1,explanation:'Кавказский хребет — естественный барьер, блокирующий холодные воздушные массы с севера. Тёплое Чёрное море отдаёт накопленное тепло зимой. Это сочетание создаёт уникальный для России субтропический климат.'},
+
+  {id:'ebc_samshit_find',locationId:'ebc_sokolova',title:'Реликтовый самшит',subtitle:'Найди дерево-ровесник динозавров',category:'ecology',type:'find',difficulty:3,points:500,icon:'🌲',isSecret:false,
+   instruction:'Найди самшит колхидский и сфотографируй. AI определит вид.',
+   hint:'Самшит — вечнозелёный кустарник с мелкими (1–3 см) округлыми кожистыми листьями. Молодые листья светло-зелёные, взрослые тёмные и глянцевые. Ищи в тени, у берегов. Занесён в Красную книгу — не рвать!',
+   targetSpeciesIds:['samshit']},
+
+  {id:'ebc_quiz_subtropics',locationId:'ebc_sokolova',title:'Почему здесь субтропики?',subtitle:'Климат Черноморского побережья',category:'ecology',type:'quiz',difficulty:1,points:100,icon:'🌡️',isSecret:false,
+   question:'Какое растение является живым символом-индикатором субтропического климата Сочи?',
+   options:['Берёза','Пальма трахикарпус','Ель','Тополь'],
+   correctIndex:1,explanation:'Пальма трахикарпус — единственная пальма, которая зимует на улице в России без укрытия. Там, где она растёт в открытом грунте, климат действительно субтропический. В Сочи она посажена везде — вдоль набережной, в парках, во дворах.'},
+
+  // === ДЕНДРАРИЙ ===
+  {id:'dendrary_explore',locationId:'dendrary',title:'Сад у моря',subtitle:'История Сочинского дендрария',category:'culture',type:'explore',difficulty:1,points:150,icon:'🌳',isSecret:false,
+   content:`1892 год. Журналист Сергей Худеков приобрёл участок земли у моря в Сочи.
+
+Он начал завозить растения со всего мира: Австралия, Новая Зеландия, Китай, Япония, Северная и Южная Америка. Каждое дерево — история путешествия.
+
+Сейчас здесь более 1800 видов растений на 50 гектарах. Японский садик с карпами. Итальянский партер. Монгольский дуб рядом с новозеландскими деревьями.
+
+Канатная дорога поднимает на холм — открывается вид на море, горы и весь парк.
+
+В советское время дендрарий стал федеральным памятником природы. Его охраняют как научную коллекцию, накопленную за 130 лет.`,
+   question:'В каком году основан Сочинский дендрарий?',
+   options:['1872','1892','1912','1932'],
+   correctIndex:1,explanation:'Дендрарий основан в 1892 году журналистом и литератором Сергеем Худековым. Он скупил несколько участков на склоне у моря и начал завозить растения со всего мира. Сейчас парк — один из красивейших в России.'},
+
+  {id:'dendrary_magnolia_photo',locationId:'dendrary',title:'Цветок динозавров',subtitle:'Сфотографируй магнолию',category:'ecology',type:'photo',difficulty:1,points:100,icon:'🌺',isSecret:false,
+   instruction:'Найди и сфотографируй магнолию крупноцветковую в дендрарии',
+   hint:'Магнолия — вечнозелёное дерево с крупными кожистыми листьями (до 20 см), снизу — рыжеватые. Весной и летом цветёт огромными белыми цветками диаметром до 30 см. Ищи у главного входа и вдоль центральных аллей.'},
+
+  {id:'dendrary_quiz',locationId:'dendrary',title:'Старше пчёл',subtitle:'Магнолии и эволюция',category:'ecology',type:'quiz',difficulty:2,points:150,icon:'🔬',isSecret:false,
+   question:'Кто опылял магнолии 90 миллионов лет назад, когда пчёл ещё не было?',
+   options:['Бабочки','Мухи','Жуки','Ветер'],
+   correctIndex:2,explanation:'Магнолии — одни из древнейших цветковых растений. Они появились раньше пчёл, поэтому их эволюция шла вместе с жуками. Цветки магнолии очень прочные — чтобы выдержать жуков, которые не так аккуратны, как пчёлы.'},
+
+  // === РОЗА ХУТОР ===
+  {id:'rosa_explore',locationId:'rosa_khutor',title:'От пальм до снегов',subtitle:'Высотные пояса Кавказа',category:'ecology',type:'explore',difficulty:2,points:200,icon:'🏔️',isSecret:false,
+   content:`Подъёмник поднимает тебя от 560 до 2320 метров за 20 минут.
+
+Внизу — субтропики: самшит, лавровишня, рododendron. Температура +15°C даже зимой.
+
+На 1000 метрах — широколиственный лес: бук, дуб, клён. Медведи. Кабаны. Грибы.
+
+На 1500 метрах — пихтовый лес. Воздух другой. Прохлада даже в июле.
+
+На 2000 метрах — субальпийские луга. Рododendron уже кустик 30 сантиметров. Выше него деревья не растут.
+
+На 2300 метрах — снег лежит с октября по май. Только лишайники на камнях.
+
+Одним взглядом вниз — вся история жизни на Земле: от тропиков до арктики, за 20 минут подъёма.`,
+   question:'Как называется явление смены природных зон с высотой в горах?',
+   options:['Географическая широтность','Высотная поясность','Климатическая ступенчатость','Вертикальная зональность'],
+   correctIndex:1,explanation:'Высотная поясность — закономерная смена природных зон по мере подъёма в горы. Открыта Александром фон Гумбольдтом в начале XIX века. На Кавказе можно пройти за один день путь, эквивалентный поездке от Сочи до Арктики.'},
+
+  {id:'rosa_rhododendron_photo',locationId:'rosa_khutor',title:'Кавказская роза',subtitle:'Сфотографируй рododendron',category:'ecology',type:'photo',difficulty:1,points:100,icon:'🌸',isSecret:false,
+   instruction:'Найди и сфотографируй рododendron понтийский на горных склонах',
+   hint:'Рododendron — вечнозелёный кустарник с тёмными кожистыми листьями. В мае-июне цветёт крупными лиловыми гроздьями. Растёт на высоте 600–2000м. На горных тропах он буквально везде по краям — нельзя не заметить.'},
+
+  {id:'rosa_quiz_belts',locationId:'rosa_khutor',title:'Высотная поясность',subtitle:'Снизу вверх по Кавказу',category:'ecology',type:'quiz',difficulty:2,points:150,icon:'🗻',isSecret:false,
+   question:'В каком порядке снизу вверх сменяются природные пояса на Кавказе?',
+   options:['Субтропики → степь → лес → тундра','Субтропики → лес → альпийские луга → снег и льды','Лес → субтропики → альпийские луга','Тундра → лес → субтропики → снег'],
+   correctIndex:1,explanation:'Высотная поясность Кавказа: субтропики (0–400м) → широколиственный лес (400–1400м) → хвойный лес (1400–2000м) → субальпийские луга (2000–2500м) → альпийские луга (2500–3000м) → нивальный пояс — снег и льды (выше 3000м).'},
+
+  // === КРАСНАЯ ПОЛЯНА ===
+  {id:'kp_explore',locationId:'krasnaya_polyana',title:'Страна адыгов',subtitle:'История до Красной Поляны',category:'history',type:'explore',difficulty:1,points:150,icon:'🏔️',isSecret:false,
+   content:`До 1864 года здесь был адыгский аул Кбааде.
+
+Адыги — коренные жители Западного Кавказа — жили в этих горах тысячелетиями. Охотились, пасли скот, знали каждую тропу.
+
+Кавказская война длилась почти 50 лет — с 1817 по 1864 год. В мае 1864 года именно здесь, в ауле Кбааде, был проведён парадный смотр войск в честь завершения завоевания Кавказа.
+
+Большинство адыгов были вынуждены покинуть родные горы. Сейчас их потомки живут в Турции, Сирии, Иордании — диаспора насчитывает несколько миллионов человек.
+
+Посёлок переименовали. «Красная Поляна» — по цветению рododendron, который каждую весну заливает склоны лиловым.`,
+   question:'Почему посёлок называется «Красная Поляна»?',
+   options:['По красным флагам советской эпохи','По красному снегу на закате','По цветению рododendron на склонах','В честь красноармейцев после революции'],
+   correctIndex:2,explanation:'Название дано по рododendron кавказскому, массово цветущему на склонах весной. В мае-июне горные луга буквально краснеют-лиловеют от соцветий. Местные адыги называли это место своим словом, а русские переименовали по цвету цветения.'},
+
+  {id:'kp_quiz_history',locationId:'krasnaya_polyana',title:'Конец Кавказской войны',subtitle:'Историческое событие 1864 года',category:'history',type:'quiz',difficulty:2,points:150,icon:'📜',isSecret:false,
+   question:'Сколько лет длилась Кавказская война?',
+   options:['около 20 лет','около 35 лет','около 47 лет','около 60 лет'],
+   correctIndex:2,explanation:'Кавказская война длилась с 1817 по 1864 год — почти 47 лет. Это одна из самых долгих войн в истории России. Завершение в Красной Поляне (Кбааде) стало официальной точкой завоевания Западного Кавказа.'},
+
+  // === ИМЕРЕТИНСКАЯ НИЗМЕННОСТЬ ===
+  {id:'imer_explore',locationId:'imeretinka',title:'Олимпиада у моря',subtitle:'История Имеретинской низменности',category:'culture',type:'explore',difficulty:1,points:150,icon:'🏅',isSecret:false,
+   content:`В устье реки Мзымты раньше были болота и лиманы.
+
+Адыги ловили здесь рыбу — лиман богатый, водоплавающих птиц много.
+
+В XX веке болота осушили, построили посёлок Адлер.
+
+Потом объявили: здесь будут Зимние Олимпийские игры 2014 года.
+
+Зимние — в субтропиках. Рядом с пальмами и тёплым морем.
+
+Здесь построили Олимпийский стадион «Фишт», хоккейный дворец «Большой», конькобежный центр — всё в 500 метрах от Чёрного моря. Горные виды — слалом, биатлон — проходили в 40 км, в горах Красной Поляны.
+
+Такого сочетания в истории зимних Олимпиад не было.`,
+   question:'Что делает Олимпиаду Сочи-2014 уникальной в истории Зимних игр?',
+   options:['Первая в России','Соревнования рядом с тёплым субтропическим морем','Самая дорогая в истории','Участвовало рекордное число стран'],
+   correctIndex:1,explanation:'На Олимпиаде-2014 горные виды проходили в 40 км от моря при +5°C внизу, а прибрежные арены стояли в 500 метрах от пальм и пляжей. Такой климатической контраст — уникален в истории Зимних Олимпийских игр.'},
+
+  {id:'imer_quiz_olympics',locationId:'imeretinka',title:'Сочи 2014',subtitle:'Факты Олимпиады',category:'culture',type:'quiz',difficulty:1,points:100,icon:'🥇',isSecret:false,
+   question:'В каком году прошли Зимние Олимпийские игры в Сочи?',
+   options:['2010','2012','2014','2016'],
+   correctIndex:2,explanation:'XXII Зимние Олимпийские игры прошли в Сочи с 7 по 23 февраля 2014 года. Россия заняла 1-е место в общем медальном зачёте — 13 золотых, 11 серебряных, 9 бронзовых медалей.'},
+
+  {id:'imer_ecology',locationId:'imeretinka',title:'Перелётный путь',subtitle:'Имеретинский заказник',category:'ecology',type:'quiz',difficulty:2,points:150,icon:'🦅',isSecret:false,
+   question:'Чем экологически важна Имеретинская низменность для птиц?',
+   options:['Здесь гнездится белоголовый орлан','Это крупнейший осенний перевалочный пункт для мигрирующих птиц','Единственное место зимовки фламинго в России','Здесь колония пеликанов'],
+   correctIndex:1,explanation:'Устье Мзымты — важнейший пункт осенней миграции. Через Имеретинский заказник пролетают сотни тысяч птиц из Европы в Африку. Рядом с Олимпийским парком — один из лучших в России мест для наблюдения за перелётными птицами.'},
+
+  // === АГУРСКИЕ ВОДОПАДЫ ===
+  {id:'agur_explore',locationId:'agur_waterfall',title:'Прометей на скале',subtitle:'Легенда Агурского ущелья',category:'culture',type:'explore',difficulty:1,points:150,icon:'💧',isSecret:false,
+   content:`На скале над Агурским ущельем стоит статуя Прометея.
+
+По греческому мифу, Прометей похитил у богов огонь и отдал людям. За это Зевс приковал его к кавказской скале. Каждый день орёл прилетал и клевал печень титана — за ночь она отрастала снова.
+
+Именно к кавказским скалам — по версии древних греков — был прикован Прометей.
+
+Внизу течёт река Агура. Три каскада водопадов: нижний падает с высоты 23 метра, средний — 21м, верхний — 30м. Вода ледяная даже в июле — питается горными снежниками.
+
+В ущелье — реликтовый самшитовый лес, которому миллионы лет. Самшит рос здесь ещё когда по Кавказу ходили саблезубые тигры.`,
+   question:'Что означает греческое имя «Прометей»?',
+   options:['Похититель огня','Мыслящий вперёд (предвидящий)','Победитель орла','Кузнец богов'],
+   correctIndex:1,explanation:'Прометей (Προμηθεύς) — «мыслящий вперёд», предвидящий. Он знал, что его накажут, но всё равно отдал огонь людям. В этом — суть мифа: знание о последствиях и осознанный выбор несмотря на них.'},
+
+  {id:'agur_waterfall_photo',locationId:'agur_waterfall',title:'Поймай водопад',subtitle:'Нижний Агурский водопад — 23 метра',category:'ecology',type:'photo',difficulty:1,points:100,icon:'📸',isSecret:false,
+   instruction:'Сфотографируй нижний Агурский водопад',
+   hint:'Нижний водопад — первый на маршруте (высота 23м), самый доступный. Лучший ракурс — с деревянной площадки-смотровой у подножия. Брызги долетают до тропы — держи телефон крепко. Вода холодная даже летом.'},
+
+  {id:'agur_samshit_find',locationId:'agur_waterfall',title:'Реликт в ущелье',subtitle:'Самшит Агурского леса',category:'ecology',type:'find',difficulty:3,points:500,icon:'🌲',isSecret:false,
+   instruction:'Найди в ущелье самшит колхидский и сфотографируй для AI',
+   hint:'Самшитовый лес в Агурском ущелье — охраняемый памятник природы. Небольшое дерево или куст с блестящими тёмно-зелёными листьями размером с ноготь. Кора серая, мелкотрещиноватая. Растёт в тени у воды. Не рвать — Красная книга!',
+   targetSpeciesIds:['samshit']},
+
+  // === ВОРОНЦОВСКИЕ ПЕЩЕРЫ ===
+  {id:'caves_explore',locationId:'vorontsov_caves',title:'Подземная река',subtitle:'История Воронцовских пещер',category:'ecology',type:'explore',difficulty:2,points:200,icon:'🦇',isSecret:false,
+   content:`Река Воронцовка текла здесь миллионы лет.
+
+Вода растворяла известняк. Прокладывала ходы. Обрушивала своды. Создавала залы.
+
+Сейчас Воронцовская пещерная система — 11,7 километров ходов, глубина 240 метров. Внутри — подземные озёра и несколько рек.
+
+Со свода свисают сталактиты — растут по 1 сантиметру в 100 лет. Некоторым — сотни тысяч лет.
+
+Температура внутри постоянная — +11°C. Зимой здесь спят тысячи летучих мышей: несколько видов, включая краснокнижного большого подковоноса. Мышь выбирает пещеру за постоянный климат — не замёрзнет и не перегреется.
+
+Ты входишь в мир, который существовал задолго до людей.`,
+   question:'За сколько времени вырастает 1 сантиметр сталактита?',
+   options:['За 10 лет','За 100 лет','За 1000 лет','За 10 000 лет'],
+   correctIndex:1,explanation:'Скорость роста сталактитов — в среднем 1 мм в 10 лет, то есть 1 см за 100 лет. Это значит, что метровый сталактит рос 10 000 лет. Именно поэтому пещеры охраняют: одно прикосновение сбивает то, что росло тысячелетиями.'},
+
+  {id:'caves_quiz_speleothem',locationId:'vorontsov_caves',title:'Сталактит или сталагмит?',subtitle:'Как не перепутать',category:'ecology',type:'quiz',difficulty:1,points:100,icon:'⛰️',isSecret:false,
+   question:'Как запомнить: сталактит висит сверху, сталагмит растёт снизу?',
+   options:['Сталак-ТИТ — держиТСЯ за потолок; сталаг-МИТ — стоИТ на полу','Сталактит — тяжёлый (падает вниз), сталагмит — лёгкий (тянется вверх)','Они одинаковые, просто в разных пещерах по-разному называют','По длине: длиннее = сталактит'],
+   correctIndex:0,explanation:'Мнемоника: сталакТИТ — держиТСЯ за потолок, сталагМИТ — стоИТ на полу. Когда они срастаются — образуется сталагнат (колонна). Сталактиты растут из потолка, сталагмиты — из пола навстречу.'},
+
+  {id:'caves_bats_secret',locationId:'vorontsov_caves',title:'Ночной патруль',subtitle:'Секретный квест — летучие мыши',category:'secret',type:'photo',difficulty:3,points:500,icon:'🦇',isSecret:true,
+   instruction:'Сфотографируй летучую мышь у входа в пещеру после захода солнца',
+   hint:'Подковоносы вылетают строго после полного захода солнца. Встань в 10–15 метрах от входа и смотри вверх. Мышь летит зигзагами — это не хаос, это охота на мотыльков с помощью ультразвука. Совсем не как птицы.'}
 ];
+
+// ===================== CITY HELPERS =====================
+function activeCity(){return state?.city||'kaliningrad';}
+function cityLocations(){return LOCATIONS.filter(l=>(l.city||'kaliningrad')===activeCity());}
+function cityQuests(){return QUESTS.filter(q=>{const l=LOCATIONS.find(x=>x.id===q.locationId);return(l?.city||'kaliningrad')===activeCity();});}
+function citySpecies(){return SPECIES.filter(s=>(s.city||'kaliningrad')===activeCity());}
 
 // ===================== STATE =====================
 const KEY='sledopyt_v2';
 let state={
   discovered:[],completedQuests:[],
   points:0,categoryPoints:{ecology:0,history:0,culture:0,animals:0,secret:0},
-  level:1,mode:'family',
+  level:1,mode:'family',city:null,
   userName:tg?.initDataUnsafe?.user?.first_name||'Следопыт'
 };
 function loadState(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s)Object.assign(state,s);}catch(e){}}
@@ -688,18 +917,45 @@ function closeOv(id){
 function closeAllOv(){ovStack.forEach(id=>document.getElementById(id)?.classList.remove('show'));ovStack.length=0;tg?.BackButton.hide();}
 function handleBack(){if(ovStack.length>0)closeOv(ovStack[ovStack.length-1]);}
 
+// ===================== CITY SELECTOR =====================
+const CITY_CENTERS={kaliningrad:{lat:54.710,lng:20.508,zoom:13},sochi:{lat:43.585,lng:39.723,zoom:11}};
+const CITY_NAMES={kaliningrad:'🏰 Калининград',sochi:'🌴 Сочи'};
+
+function selectCity(id){
+  state.city=id;saveState();
+  document.getElementById('city-selector').style.display='none';
+  updateCityHeader();
+  if(map)renderMapMarkers();
+  document.getElementById('mc').textContent=citySpecies().filter(s=>state.discovered.includes(s.id)).length;
+}
+function showCitySelector(){document.getElementById('city-selector').style.display='flex';}
+function updateCityHeader(){
+  const el=document.getElementById('city-name-display');
+  if(el)el.textContent={kaliningrad:'Калининград',sochi:'Сочи'}[activeCity()]||'';
+  const sw=document.getElementById('city-switch-name');
+  if(sw)sw.textContent=CITY_NAMES[activeCity()]||'';
+}
+
 // ===================== MAP =====================
-let map;
+let map,mapMarkers=[];
 function initMap(){
   map=L.map('map',{zoomControl:false,attributionControl:false}).setView([54.710,20.508],13);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
-  LOCATIONS.forEach(loc=>{
-    const isPrimary=loc.id==='ponarth'||loc.id==='zoo';
+  renderMapMarkers();
+}
+function renderMapMarkers(){
+  mapMarkers.forEach(m=>{try{map.removeLayer(m);}catch(e){}});
+  mapMarkers=[];
+  const cc=CITY_CENTERS[activeCity()]||CITY_CENTERS.kaliningrad;
+  map.setView([cc.lat,cc.lng],cc.zoom);
+  cityLocations().forEach(loc=>{
+    const isPrimary=['ponarth','zoo','ebc_sokolova','dendrary'].includes(loc.id);
     const m=L.circleMarker([loc.lat,loc.lng],{
       radius:isPrimary?14:10,fillColor:loc.color,color:'rgba(255,255,255,0.3)',weight:1.5,fillOpacity:.9
     }).addTo(map);
     const label=L.divIcon({html:`<div style="color:${loc.color};font-size:10px;font-weight:700;white-space:nowrap;text-shadow:0 1px 4px #000,0 0 8px #000">${loc.icon} ${loc.nameShort}</div>`,iconAnchor:[-14,8],className:''});
-    L.marker([loc.lat,loc.lng],{icon:label}).addTo(map);
+    const lm=L.marker([loc.lat,loc.lng],{icon:label}).addTo(map);
+    mapMarkers.push(m,lm);
     m.on('click',()=>openLocation(loc));
   });
 }
@@ -998,9 +1254,10 @@ function openSpecies(id){
 
 // ===================== ATLAS =====================
 function renderAtlas(){
-  const found=state.discovered.length;
-  document.getElementById('atlas-cnt').textContent=`${found} из ${SPECIES.length} обнаружено`;
-  document.getElementById('atlas-grid').innerHTML=SPECIES.map(sp=>{
+  const cs=citySpecies();
+  const found=cs.filter(s=>state.discovered.includes(s.id)).length;
+  document.getElementById('atlas-cnt').textContent=`${found} из ${cs.length} обнаружено`;
+  document.getElementById('atlas-grid').innerHTML=cs.map(sp=>{
     const f=state.discovered.includes(sp.id);
     const rar=sp.rarity!=='common'?'rare':'';
     return `<div class="ac ${f?'found':''} ${rar}" onclick="openSpecies('${sp.id}')">
@@ -1016,7 +1273,8 @@ let currentCat='all';
 function renderQuests(){
   const tabs=[{id:'all',icon:'📋',label:'Все'},...Object.entries(CAT).map(([id,c])=>({id,icon:c.icon,label:c.label}))];
   document.getElementById('cat-tabs').innerHTML=tabs.map(t=>`<div class="ctab ${currentCat===t.id?'active':''}" onclick="filterCat('${t.id}')">${t.icon} ${t.label}</div>`).join('');
-  const filtered=currentCat==='all'?QUESTS:QUESTS.filter(q=>q.category===currentCat);
+  const cq=cityQuests();
+  const filtered=currentCat==='all'?cq:cq.filter(q=>q.category===currentCat);
   document.getElementById('qs-list').innerHTML=filtered.length?filtered.map(q=>renderQuestItem(q)).join(''):`<div class="empty">Квестов нет</div>`;
 }
 function filterCat(id){currentCat=id;renderQuests();}
@@ -1027,14 +1285,18 @@ function renderProgress(){
   const l=calcLevel(state.points);state.level=l;
   document.getElementById('pname').textContent=state.userName;
   document.getElementById('plevel').textContent=`Уровень ${l} · ${LEVELS[l]||'Учёный'}`;
-  document.getElementById('ps-found').textContent=state.discovered.length;
-  document.getElementById('ps-quests').textContent=state.completedQuests.length;
+  const cityD=citySpecies().filter(s=>state.discovered.includes(s.id));
+  const cityC=cityQuests().filter(q=>state.completedQuests.includes(q.id));
+  document.getElementById('ps-found').textContent=cityD.length;
+  document.getElementById('ps-quests').textContent=cityC.length;
   document.getElementById('ps-pts').textContent=state.points;
+  updateCityHeader();
+  const cq=cityQuests();
   const cats=[
-    {id:'ecology',max:QUESTS.filter(q=>q.category==='ecology').length*200},
-    {id:'history',max:QUESTS.filter(q=>q.category==='history').length*200},
-    {id:'culture',max:QUESTS.filter(q=>q.category==='culture').length*200},
-    {id:'animals',max:QUESTS.filter(q=>q.category==='animals').length*200}
+    {id:'ecology',max:cq.filter(q=>q.category==='ecology').length*200},
+    {id:'history',max:cq.filter(q=>q.category==='history').length*200},
+    {id:'culture',max:cq.filter(q=>q.category==='culture').length*200},
+    {id:'animals',max:cq.filter(q=>q.category==='animals').length*200}
   ];
   document.getElementById('cat-prog-rows').innerHTML=cats.map(({id,max})=>{
     const c=CAT[id];const pts=state.categoryPoints[id]||0;
@@ -1073,7 +1335,12 @@ function hideSpinner(){document.getElementById('spinner').classList.remove('show
 
 // ===================== INIT =====================
 initMap();
-document.getElementById('mc').textContent=state.discovered.length;
+document.getElementById('mc').textContent=citySpecies().filter(s=>state.discovered.includes(s.id)).length;
+if(!state.city){
+  document.getElementById('city-selector').style.display='flex';
+} else {
+  updateCityHeader();
+}
 
 // tabs rendered by renderQuests() when user navigates to quests screen
 </script>
