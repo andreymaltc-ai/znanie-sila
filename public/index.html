@@ -2,529 +2,1080 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Следопыт</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-  :root {
-    --bg: #0C1714;
-    --surface: #152118;
-    --card: #1C2E22;
-    --border: #2A4030;
-    --amber: #F4A435;
-    --amber-dim: #8B5E1A;
-    --text: #F5F0E8;
-    --text-muted: #7A9A82;
-    --rare: #CE93D8;
-    --safe-bottom: env(safe-area-inset-bottom, 0px);
-  }
-  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  body { background:var(--bg); color:var(--text); font-family:-apple-system,sans-serif; height:100dvh; overflow:hidden; }
+:root{
+  --bg:#0C1714;--surf:#152118;--card:#1C2E22;--brd:#2A4030;
+  --amber:#F4A435;--amber2:#8B5E1A;--text:#F5F0E8;--muted:#7A9A82;
+  --green:#4CAF50;--purple:#CE93D8;--blue:#4FC3F7;--orange:#FF7043;
+  --red:#EF5350;--safe:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif}
 
-  /* === НАВИГАЦИЯ === */
-  #nav { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--border); display:flex; z-index:100; padding-bottom:var(--safe-bottom); }
-  .nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:10px 0 8px; cursor:pointer; color:var(--text-muted); font-size:10px; border:none; background:none; transition:color .2s; }
-  .nav-btn.active { color:var(--amber); }
-  .nav-btn svg { width:22px; height:22px; }
+/* NAV */
+#nav{position:fixed;bottom:0;left:0;right:0;z-index:300;background:var(--surf);border-top:1px solid var(--brd);display:flex;padding-bottom:var(--safe)}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 0 7px;border:none;background:none;color:var(--muted);font-size:10px;cursor:pointer;transition:color .2s}
+.nb.active{color:var(--amber)}
+.nb svg{width:22px;height:22px}
 
-  /* === ЭКРАНЫ === */
-  .screen { position:fixed; inset:0; bottom:calc(56px + var(--safe-bottom)); display:none; overflow-y:auto; }
-  .screen.active { display:block; }
+/* SCREENS */
+.screen{position:fixed;top:0;left:0;right:0;bottom:calc(56px + var(--safe));display:none;overflow-y:auto}
+.screen.active{display:block}
+#map-screen{overflow:hidden}
+#map{width:100%;height:100%}
 
-  /* === КАРТА === */
-  #map { width:100%; height:100%; }
-  #map-screen { padding:0; }
+/* OVERLAY VIEWS */
+.ov{position:fixed;inset:0;bottom:calc(56px + var(--safe));background:var(--bg);z-index:200;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);overflow-y:auto;display:flex;flex-direction:column}
+.ov.show{transform:translateY(0)}
 
-  /* === ШАПКА КАРТЫ === */
-  #map-header { position:fixed; top:0; left:0; right:0; z-index:500; background:linear-gradient(180deg,rgba(12,23,20,.95) 0%,rgba(12,23,20,0) 100%); padding:14px 16px 24px; pointer-events:none; }
-  #map-header h1 { font-size:16px; font-weight:700; letter-spacing:.05em; color:var(--text); }
-  #map-header span { font-size:12px; color:var(--text-muted); }
+/* VIEW HEADER */
+.vh{display:flex;align-items:center;gap:12px;padding:14px 16px;position:sticky;top:0;background:var(--bg);z-index:10;border-bottom:1px solid var(--brd)}
+.back-btn{width:36px;height:36px;border-radius:18px;background:var(--card);border:1px solid var(--brd);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.back-btn svg{width:18px;height:18px;color:var(--text)}
+.vh-title{font-size:17px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vh-badge{font-size:10px;padding:3px 8px;border-radius:10px;background:var(--card);border:1px solid var(--brd);white-space:nowrap;flex-shrink:0}
+.vc{padding:16px;flex:1}
 
-  /* === КАРТОЧКА ЛОКАЦИИ === */
-  #location-sheet { position:fixed; bottom:calc(56px + var(--safe-bottom)); left:0; right:0; background:var(--surface); border-top:2px solid var(--amber); border-radius:20px 20px 0 0; transform:translateY(100%); transition:transform .35s cubic-bezier(.4,0,.2,1); z-index:400; max-height:65vh; overflow-y:auto; }
-  #location-sheet.open { transform:translateY(0); }
-  .sheet-handle { width:40px; height:4px; background:var(--border); border-radius:2px; margin:12px auto 0; }
-  .sheet-body { padding:16px; }
-  .sheet-type { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--amber); margin-bottom:6px; }
-  .sheet-name { font-size:20px; font-weight:700; margin-bottom:4px; }
-  .sheet-history { font-size:13px; color:var(--text-muted); line-height:1.6; margin:10px 0; }
-  .sheet-species-title { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); margin:14px 0 8px; }
-  .species-chips { display:flex; flex-wrap:wrap; gap:6px; }
-  .chip { padding:5px 10px; border-radius:20px; font-size:12px; background:var(--card); border:1px solid var(--border); }
-  .chip.found { border-color:var(--amber); color:var(--amber); }
+/* MAP HEADER */
+#mh{position:fixed;top:0;left:0;right:0;z-index:100;background:linear-gradient(180deg,rgba(12,23,20,.95) 0%,transparent 100%);padding:14px 16px 28px;pointer-events:none}
+#mh h1{font-size:15px;font-weight:700;letter-spacing:.06em}
+#mh span{font-size:12px;color:var(--muted)}
 
-  /* === АТЛАС === */
-  #atlas-screen { padding:0 0 8px; }
-  .atlas-header { padding:16px 16px 8px; }
-  .atlas-header h2 { font-size:18px; font-weight:700; }
-  .atlas-counter { font-size:13px; color:var(--text-muted); margin-top:2px; }
-  .atlas-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:2px; padding:2px; }
-  .atlas-card { aspect-ratio:1; background:var(--card); border-radius:4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; position:relative; overflow:hidden; border:1px solid var(--border); transition:border-color .2s; }
-  .atlas-card.found { border-color:var(--amber); }
-  .atlas-card.rare { border-color:var(--rare); }
-  .atlas-card-icon { font-size:30px; }
-  .atlas-card-name { font-size:9px; color:var(--text-muted); text-align:center; padding:0 4px; line-height:1.3; }
-  .atlas-card.found .atlas-card-name { color:var(--text); }
-  .atlas-card-badge { position:absolute; top:4px; right:4px; font-size:10px; }
-  .atlas-card-lock { font-size:20px; color:var(--border); }
+/* LOCATION BANNER */
+.loc-banner{height:80px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:48px;margin-bottom:14px;position:relative;overflow:hidden}
+.loc-type-badge{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);margin-bottom:6px}
+.loc-name{font-size:22px;font-weight:700;margin-bottom:10px}
+.loc-history{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:16px}
+.sec-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:14px 0 8px}
 
-  /* === ДЕТАЛЬНАЯ КАРТОЧКА ВИДА === */
-  #species-modal { position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:600; display:none; align-items:flex-end; }
-  #species-modal.open { display:flex; }
-  .species-card { background:var(--surface); border-radius:24px 24px 0 0; width:100%; padding:20px; padding-bottom:calc(20px + var(--safe-bottom)); max-height:80vh; overflow-y:auto; }
-  .species-latin { font-style:italic; color:var(--text-muted); font-size:14px; margin-bottom:2px; }
-  .species-name { font-size:24px; font-weight:700; margin-bottom:12px; }
-  .species-icon-big { font-size:64px; text-align:center; margin:12px 0; }
-  .species-fact-label { font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--amber); margin-bottom:6px; }
-  .species-fact { font-size:14px; line-height:1.7; color:var(--text-muted); }
-  .species-rarity { display:inline-block; padding:4px 10px; border-radius:12px; font-size:11px; margin-top:12px; }
-  .rarity-common { background:#1E3A2A; color:#4CAF50; }
-  .rarity-uncommon { background:#2A2A1E; color:#F4A435; }
-  .rarity-rare { background:#2A1E2A; color:var(--rare); }
-  .species-found-tag { display:flex; align-items:center; gap:6px; margin-top:14px; font-size:13px; color:var(--amber); }
+/* CHIPS */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:5px 10px;border-radius:20px;font-size:12px;background:var(--card);border:1px solid var(--brd);cursor:pointer;transition:border-color .2s}
+.chip.found{border-color:var(--amber);color:var(--amber)}
+.chip:active{transform:scale(.96)}
 
-  /* === КВЕСТЫ === */
-  #quests-screen { padding:16px; }
-  #quests-screen h2 { font-size:18px; font-weight:700; margin-bottom:16px; }
-  .quest-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:10px; }
-  .quest-card.secret { border-color:var(--amber-dim); }
-  .quest-title { font-size:15px; font-weight:600; margin-bottom:4px; }
-  .quest-desc { font-size:12px; color:var(--text-muted); line-height:1.5; }
-  .quest-meta { display:flex; align-items:center; gap:8px; margin-top:10px; }
-  .quest-zone { font-size:10px; color:var(--amber); background:rgba(244,164,53,.1); padding:3px 8px; border-radius:10px; }
-  .quest-reward { font-size:10px; color:var(--text-muted); margin-left:auto; }
-  .quest-lock { font-size:18px; margin-left:auto; }
+/* QUEST LIST ITEMS */
+.qi{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s,transform .1s;display:flex;gap:12px;align-items:flex-start}
+.qi:active{transform:scale(.98);border-color:var(--amber)}
+.qi.secret{border-color:var(--amber2)}
+.qi.done{opacity:.55}
+.qi-icon{font-size:24px;flex-shrink:0;margin-top:2px}
+.qi-body{flex:1;min-width:0}
+.qi-title{font-size:14px;font-weight:600;margin-bottom:3px}
+.qi-sub{font-size:12px;color:var(--muted);line-height:1.4}
+.qi-meta{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap}
+.cat-badge{font-size:10px;padding:3px 8px;border-radius:10px}
+.cat-ecology{background:rgba(76,175,80,.15);color:var(--green)}
+.cat-history{background:rgba(244,164,53,.15);color:var(--amber)}
+.cat-culture{background:rgba(206,147,216,.15);color:var(--purple)}
+.cat-animals{background:rgba(255,112,67,.15);color:var(--orange)}
+.cat-secret{background:rgba(120,144,156,.15);color:#90A4AE}
+.type-badge{font-size:10px;padding:3px 8px;border-radius:10px;background:var(--surf);color:var(--muted)}
+.pts{font-size:10px;color:var(--muted);margin-left:auto}
+.done-mark{font-size:14px;margin-left:auto}
 
-  /* === ПРОФИЛЬ === */
-  #profile-screen { padding:20px; }
-  .profile-name { font-size:22px; font-weight:700; margin-bottom:2px; }
-  .profile-level { font-size:13px; color:var(--amber); margin-bottom:20px; }
-  .stat-row { display:flex; gap:10px; margin-bottom:16px; }
-  .stat-box { flex:1; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; text-align:center; }
-  .stat-num { font-size:28px; font-weight:700; color:var(--amber); }
-  .stat-label { font-size:11px; color:var(--text-muted); margin-top:2px; }
-  .progress-bar-wrap { background:var(--card); border-radius:14px; padding:14px; margin-bottom:16px; }
-  .pb-label { font-size:12px; color:var(--text-muted); margin-bottom:8px; display:flex; justify-content:space-between; }
-  .pb-track { height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
-  .pb-fill { height:100%; background:var(--amber); border-radius:3px; transition:width .5s; }
-  .mode-selector { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; }
-  .mode-title { font-size:12px; color:var(--text-muted); margin-bottom:10px; }
-  .mode-options { display:flex; gap:8px; }
-  .mode-opt { flex:1; padding:8px; border-radius:10px; border:1px solid var(--border); font-size:11px; text-align:center; cursor:pointer; color:var(--text-muted); }
-  .mode-opt.active { border-color:var(--amber); color:var(--amber); background:rgba(244,164,53,.08); }
+/* QUEST DETAIL */
+.qd-icon{font-size:56px;text-align:center;margin:16px 0 12px}
+.qd-title{font-size:22px;font-weight:700;margin-bottom:4px}
+.qd-sub{font-size:14px;color:var(--muted);margin-bottom:14px}
+.qd-metas{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.diff-dots{display:flex;gap:3px}
+.diff-dot{width:8px;height:8px;border-radius:4px}
+.qd-desc{font-size:14px;line-height:1.7;color:var(--muted);margin-bottom:20px}
+.qd-type-info{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:14px;margin-bottom:20px;display:flex;gap:12px;align-items:flex-start}
+.qd-type-icon{font-size:28px}
+.qd-type-text{font-size:13px;color:var(--muted);line-height:1.5}
 
-  /* === КАМЕРА (FAB) === */
-  #fab { position:fixed; bottom:calc(70px + var(--safe-bottom)); right:18px; width:54px; height:54px; border-radius:27px; background:var(--amber); border:none; cursor:pointer; z-index:300; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 20px rgba(244,164,53,.4); transition:transform .15s; }
-  #fab:active { transform:scale(.94); }
-  #file-input { display:none; }
+/* BUTTONS */
+.btn{width:100%;padding:15px;border-radius:14px;font-size:16px;font-weight:600;border:none;cursor:pointer;transition:transform .1s,opacity .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--amber);color:#0C1714}
+.btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--brd)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-sm{padding:10px 16px;width:auto;font-size:14px;border-radius:10px}
 
-  /* === УВЕДОМЛЕНИЕ === */
-  #toast { position:fixed; top:16px; left:16px; right:16px; background:var(--card); border:1px solid var(--amber); border-radius:14px; padding:14px 16px; z-index:700; transform:translateY(-120%); transition:transform .3s; font-size:14px; box-shadow:0 8px 30px rgba(0,0,0,.5); }
-  #toast.show { transform:translateY(0); }
-  #toast .toast-title { font-weight:700; color:var(--amber); margin-bottom:4px; }
+/* EXPLORE QUEST */
+.eq-content{font-size:14px;line-height:1.8;color:var(--muted);white-space:pre-line;margin-bottom:20px;padding:16px;background:var(--card);border-radius:14px;border:1px solid var(--brd)}
+.eq-question{font-size:16px;font-weight:600;margin-bottom:14px;line-height:1.4}
 
-  /* === СПИННЕР === */
-  #spinner { position:fixed; inset:0; background:rgba(12,23,20,.85); z-index:800; display:none; align-items:center; justify-content:center; flex-direction:column; gap:14px; }
-  #spinner.show { display:flex; }
-  .spin { width:40px; height:40px; border:3px solid var(--border); border-top-color:var(--amber); border-radius:50%; animation:spin .8s linear infinite; }
-  @keyframes spin { to { transform:rotate(360deg); } }
-  .spin-text { font-size:14px; color:var(--text-muted); }
+/* QUIZ QUEST */
+.quiz-q{font-size:17px;font-weight:600;line-height:1.5;margin-bottom:20px}
+.quiz-opts{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.qopt{padding:14px 16px;background:var(--card);border:2px solid var(--brd);border-radius:14px;font-size:14px;cursor:pointer;transition:border-color .15s,background .15s;display:flex;gap:10px;align-items:center;text-align:left}
+.qopt-letter{width:26px;height:26px;border-radius:13px;background:var(--surf);border:1px solid var(--brd);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.qopt:active{transform:scale(.98)}
+.qopt.selected{border-color:var(--amber);background:rgba(244,164,53,.08)}
+.qopt.correct{border-color:var(--green);background:rgba(76,175,80,.1)}
+.qopt.wrong{border-color:var(--red);background:rgba(239,83,80,.1)}
+.quiz-result{padding:16px;border-radius:14px;margin-bottom:16px;font-size:14px;line-height:1.6}
+.quiz-result.ok{background:rgba(76,175,80,.1);border:1px solid var(--green);color:var(--green)}
+.quiz-result.fail{background:rgba(239,83,80,.1);border:1px solid var(--red);color:var(--red)}
+.quiz-explanation{color:var(--text);margin-top:8px;font-size:13px;color:var(--muted)}
 
-  .leaflet-container { background:#0C1714; }
+/* PHOTO QUEST */
+.photo-instruction{font-size:15px;font-weight:600;line-height:1.5;margin-bottom:8px}
+.photo-hint{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:20px;padding:12px;background:var(--card);border-radius:10px;border-left:3px solid var(--amber)}
+.photo-preview{width:100%;aspect-ratio:4/3;border-radius:14px;object-fit:cover;margin-bottom:16px;border:2px solid var(--amber);display:none}
+.photo-placeholder{width:100%;aspect-ratio:4/3;border-radius:14px;border:2px dashed var(--brd);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;margin-bottom:16px;color:var(--muted);font-size:13px}
+
+/* FIND QUEST */
+.find-result{padding:16px;background:var(--card);border:1px solid var(--brd);border-radius:14px;margin-bottom:16px}
+.find-species-name{font-size:18px;font-weight:700;margin-bottom:4px}
+.find-species-latin{font-style:italic;color:var(--muted);font-size:13px;margin-bottom:10px}
+.find-fact{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* ATLAS */
+#atlas-screen{padding:0 0 8px}
+.atlas-hdr{padding:16px 16px 8px}
+.atlas-hdr h2{font-size:18px;font-weight:700}
+.atlas-cnt{font-size:13px;color:var(--muted);margin-top:2px}
+.atlas-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:2px}
+.ac{aspect-ratio:1;background:var(--card);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;position:relative;overflow:hidden;border:1px solid var(--brd);transition:border-color .2s}
+.ac.found{border-color:var(--amber)}
+.ac.rare{border-color:var(--purple)}
+.ac-icon{font-size:30px}
+.ac-name{font-size:9px;color:var(--muted);text-align:center;padding:0 4px;line-height:1.3}
+.ac.found .ac-name{color:var(--text)}
+.ac-star{position:absolute;top:4px;right:4px;font-size:10px}
+.ac-lock{font-size:22px;color:var(--brd)}
+
+/* SPECIES DETAIL */
+.sd-latin{font-style:italic;color:var(--muted);font-size:14px;margin-bottom:2px}
+.sd-name{font-size:24px;font-weight:700;margin-bottom:12px}
+.sd-icon{font-size:72px;text-align:center;margin:12px 0}
+.sd-section{margin-bottom:16px}
+.sd-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);margin-bottom:6px}
+.sd-text{font-size:14px;line-height:1.7;color:var(--muted)}
+.rar-badge{display:inline-block;padding:4px 10px;border-radius:12px;font-size:11px}
+.rar-common{background:#1E3A2A;color:var(--green)}
+.rar-uncommon{background:#2A2A1E;color:var(--amber)}
+.rar-rare{background:#2A1E2A;color:var(--purple)}
+.found-tag{display:flex;align-items:center;gap:6px;margin-top:14px;font-size:14px;color:var(--amber);font-weight:600}
+
+/* QUESTS SCREEN */
+#quests-screen{padding:0}
+.qs-hdr{padding:16px 16px 0}
+.qs-hdr h2{font-size:18px;font-weight:700;margin-bottom:12px}
+.cat-tabs{display:flex;gap:6px;overflow-x:auto;padding:0 16px 12px;scrollbar-width:none}
+.cat-tabs::-webkit-scrollbar{display:none}
+.ctab{flex-shrink:0;padding:7px 14px;border-radius:20px;font-size:12px;background:var(--card);border:1px solid var(--brd);cursor:pointer;transition:all .15s;color:var(--muted)}
+.ctab.active{border-color:var(--amber);color:var(--amber);background:rgba(244,164,53,.08)}
+.qs-list{padding:0 16px 16px}
+
+/* PROGRESS SCREEN */
+#progress-screen{padding:20px}
+.prog-name{font-size:22px;font-weight:700;margin-bottom:2px}
+.prog-level{font-size:13px;color:var(--amber);margin-bottom:20px}
+.stat-row{display:flex;gap:10px;margin-bottom:14px}
+.stat-box{flex:1;background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:14px;text-align:center}
+.stat-num{font-size:26px;font-weight:700;color:var(--amber)}
+.stat-label{font-size:10px;color:var(--muted);margin-top:2px}
+.cat-progress{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:16px;margin-bottom:14px}
+.cat-progress h3{font-size:13px;font-weight:700;margin-bottom:14px}
+.cprow{margin-bottom:12px}
+.cprow-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.cprow-label{font-size:13px;display:flex;align-items:center;gap:6px}
+.cprow-pct{font-size:12px;color:var(--muted)}
+.pb-track{height:5px;background:var(--brd);border-radius:3px;overflow:hidden}
+.pb-fill{height:100%;border-radius:3px;transition:width .5s}
+.mode-card{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:14px;margin-bottom:14px}
+.mode-title{font-size:12px;color:var(--muted);margin-bottom:10px}
+.mode-opts{display:flex;gap:8px}
+.mopt{flex:1;padding:8px;border-radius:10px;border:1px solid var(--brd);font-size:11px;text-align:center;cursor:pointer;color:var(--muted);transition:all .15s}
+.mopt.active{border-color:var(--amber);color:var(--amber);background:rgba(244,164,53,.08)}
+
+/* FAB */
+#fab{position:fixed;bottom:calc(70px + var(--safe));right:18px;width:54px;height:54px;border-radius:27px;background:var(--amber);border:none;cursor:pointer;z-index:250;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(244,164,53,.4);transition:transform .15s}
+#fab:active{transform:scale(.92)}
+#file-input{display:none}
+
+/* QUEST COMPLETE */
+#qc-overlay{position:fixed;inset:0;background:rgba(12,23,20,.92);z-index:500;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:32px}
+#qc-overlay.show{display:flex;animation:fadeIn .3s}
+.qc-icon{font-size:80px;animation:bounceIn .5s}
+.qc-title{font-size:24px;font-weight:700;color:var(--amber);text-align:center}
+.qc-pts{font-size:18px;color:var(--muted);text-align:center}
+.qc-badge{font-size:14px;color:var(--purple);margin-top:4px;text-align:center}
+
+/* SPINNER + TOAST */
+#spinner{position:fixed;inset:0;background:rgba(12,23,20,.85);z-index:600;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+#spinner.show{display:flex}
+.spin{width:40px;height:40px;border:3px solid var(--brd);border-top-color:var(--amber);border-radius:50%;animation:spin .8s linear infinite}
+.spin-txt{font-size:14px;color:var(--muted)}
+#toast{position:fixed;top:14px;left:14px;right:14px;background:var(--card);border:1px solid var(--amber);border-radius:14px;padding:14px 16px;z-index:550;transform:translateY(-130%);transition:transform .3s;font-size:14px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+#toast.show{transform:translateY(0)}
+.toast-t{font-weight:700;color:var(--amber);margin-bottom:3px}
+
+/* ANIMATIONS */
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes bounceIn{0%{transform:scale(0.3)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.anim-slide{animation:slideUp .25s ease-out}
+
+/* MISC */
+.divider{height:1px;background:var(--brd);margin:16px 0}
+.leaflet-container{background:var(--bg)}
+.empty{text-align:center;color:var(--muted);font-size:14px;padding:40px 20px}
 </style>
 </head>
 <body>
 
-<!-- КАРТА -->
+<!-- MAP SCREEN -->
 <div id="map-screen" class="screen active">
-  <div id="map-header">
-    <h1>СЛЕДОПЫТ</h1>
-    <span>Калининград · <span id="map-counter">0</span> видов найдено</span>
-  </div>
+  <div id="mh"><h1>СЛЕДОПЫТ</h1><span>Калининград · <span id="mc">0</span> найдено</span></div>
   <div id="map"></div>
 </div>
 
-<!-- АТЛАС -->
+<!-- ATLAS SCREEN -->
 <div id="atlas-screen" class="screen">
-  <div class="atlas-header">
-    <h2>Атлас видов</h2>
-    <div class="atlas-counter" id="atlas-counter-text">0 из 18 обнаружено</div>
-  </div>
+  <div class="atlas-hdr"><h2>Атлас видов</h2><div class="atlas-cnt" id="atlas-cnt">0 из 18</div></div>
   <div class="atlas-grid" id="atlas-grid"></div>
 </div>
 
-<!-- КВЕСТЫ -->
+<!-- QUESTS SCREEN -->
 <div id="quests-screen" class="screen">
-  <h2>Квесты</h2>
-  <div id="quest-list"></div>
+  <div class="qs-hdr">
+    <h2>Квесты</h2>
+    <div class="cat-tabs" id="cat-tabs"></div>
+  </div>
+  <div class="qs-list" id="qs-list"></div>
 </div>
 
-<!-- ПРОФИЛЬ -->
-<div id="profile-screen" class="screen">
-  <div class="profile-name" id="profile-name">Следопыт</div>
-  <div class="profile-level" id="profile-level">Уровень 1 · Наблюдатель</div>
+<!-- PROGRESS SCREEN -->
+<div id="progress-screen" class="screen">
+  <div class="prog-name" id="pname"></div>
+  <div class="prog-level" id="plevel"></div>
   <div class="stat-row">
-    <div class="stat-box"><div class="stat-num" id="stat-found">0</div><div class="stat-label">Видов найдено</div></div>
-    <div class="stat-box"><div class="stat-num" id="stat-points">0</div><div class="stat-label">Очков</div></div>
+    <div class="stat-box"><div class="stat-num" id="ps-found">0</div><div class="stat-label">Видов</div></div>
+    <div class="stat-box"><div class="stat-num" id="ps-quests">0</div><div class="stat-label">Квестов</div></div>
+    <div class="stat-box"><div class="stat-num" id="ps-pts">0</div><div class="stat-label">Очков</div></div>
   </div>
-  <div class="progress-bar-wrap">
-    <div class="pb-label"><span>До следующего уровня</span><span id="pb-label-right">50 очков</span></div>
-    <div class="pb-track"><div class="pb-fill" id="pb-fill" style="width:0%"></div></div>
+  <div class="cat-progress">
+    <h3>Знания по направлениям</h3>
+    <div id="cat-prog-rows"></div>
   </div>
-  <div class="mode-selector">
+  <div class="mode-card">
     <div class="mode-title">Режим исследования</div>
-    <div class="mode-options">
-      <div class="mode-opt" data-mode="child">Детский</div>
-      <div class="mode-opt active" data-mode="family">Семейный</div>
-      <div class="mode-opt" data-mode="expert">Эксперт</div>
+    <div class="mode-opts">
+      <div class="mopt" data-mode="child">Детский</div>
+      <div class="mopt active" data-mode="family">Семейный</div>
+      <div class="mopt" data-mode="expert">Эксперт</div>
     </div>
   </div>
 </div>
 
-<!-- НАВИГАЦИЯ -->
+<!-- OVERLAY: LOCATION -->
+<div class="ov" id="ov-location">
+  <div class="vh">
+    <div class="back-btn" onclick="closeOv('ov-location')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+    <div class="vh-title" id="ovl-title">Локация</div>
+    <div class="vh-badge" id="ovl-badge"></div>
+  </div>
+  <div class="vc" id="ovl-content"></div>
+</div>
+
+<!-- OVERLAY: QUEST DETAIL -->
+<div class="ov" id="ov-quest">
+  <div class="vh">
+    <div class="back-btn" onclick="closeOv('ov-quest')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+    <div class="vh-title" id="ovq-title">Квест</div>
+    <div class="vh-badge" id="ovq-badge"></div>
+  </div>
+  <div class="vc" id="ovq-content"></div>
+</div>
+
+<!-- OVERLAY: QUEST EXECUTION -->
+<div class="ov" id="ov-exec">
+  <div class="vh">
+    <div class="back-btn" onclick="closeOv('ov-exec')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+    <div class="vh-title" id="ove-title"></div>
+    <div class="vh-badge" id="ove-badge"></div>
+  </div>
+  <div class="vc" id="ove-content"></div>
+</div>
+
+<!-- OVERLAY: SPECIES DETAIL -->
+<div class="ov" id="ov-species">
+  <div class="vh">
+    <div class="back-btn" onclick="closeOv('ov-species')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+    <div class="vh-title" id="ovs-title">Вид</div>
+  </div>
+  <div class="vc" id="ovs-content"></div>
+</div>
+
+<!-- NAVIGATION -->
 <nav id="nav">
-  <button class="nav-btn active" data-screen="map-screen">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7"/></svg>
+  <button class="nb active" data-s="map-screen">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7"/></svg>
     Карта
   </button>
-  <button class="nav-btn" data-screen="atlas-screen">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+  <button class="nb" data-s="atlas-screen">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
     Атлас
   </button>
-  <button class="nav-btn" data-screen="quests-screen">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+  <button class="nb" data-s="quests-screen">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
     Квесты
   </button>
-  <button class="nav-btn" data-screen="profile-screen">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-    Профиль
+  <button class="nb" data-s="progress-screen">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+    Прогресс
   </button>
 </nav>
 
-<!-- FAB КАМЕРА -->
+<!-- FAB -->
 <button id="fab" title="Определить вид">
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0C1714" stroke-width="2.2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+  <svg width="24" height="24" fill="none" stroke="#0C1714" stroke-width="2.2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
 </button>
 <input type="file" id="file-input" accept="image/*" capture="environment">
 
-<!-- КАРТОЧКА ЛОКАЦИИ -->
-<div id="location-sheet">
-  <div class="sheet-handle"></div>
-  <div class="sheet-body">
-    <div class="sheet-type" id="sheet-type"></div>
-    <div class="sheet-name" id="sheet-name"></div>
-    <div class="sheet-history" id="sheet-history"></div>
-    <div class="sheet-species-title">Виды на этой локации</div>
-    <div class="species-chips" id="sheet-chips"></div>
-  </div>
+<!-- QUEST COMPLETE -->
+<div id="qc-overlay">
+  <div class="qc-icon" id="qc-icon">🌟</div>
+  <div class="qc-title" id="qc-title">Квест выполнен!</div>
+  <div class="qc-pts" id="qc-pts"></div>
+  <div class="qc-badge" id="qc-badge"></div>
+  <button class="btn btn-primary" style="margin-top:24px;max-width:280px" onclick="closeQC()">Продолжить</button>
 </div>
 
-<!-- МОДАЛЬНОЕ ОКНО ВИДА -->
-<div id="species-modal" onclick="closeSpeciesModal(event)">
-  <div class="species-card" id="species-card-inner">
-    <div class="species-latin" id="sm-latin"></div>
-    <div class="species-name" id="sm-name"></div>
-    <div class="species-icon-big" id="sm-icon"></div>
-    <div class="species-fact-label">Интересный факт</div>
-    <div class="species-fact" id="sm-fact"></div>
-    <div id="sm-rarity"></div>
-    <div id="sm-found-tag"></div>
-  </div>
-</div>
+<!-- SPINNER -->
+<div id="spinner"><div class="spin"></div><div class="spin-txt" id="spin-txt">Анализирую...</div></div>
 
-<!-- УВЕДОМЛЕНИЕ -->
-<div id="toast">
-  <div class="toast-title" id="toast-title"></div>
-  <div id="toast-body"></div>
-</div>
-
-<!-- СПИННЕР -->
-<div id="spinner">
-  <div class="spin"></div>
-  <div class="spin-text" id="spinner-text">Анализирую фото...</div>
-</div>
+<!-- TOAST -->
+<div id="toast"><div class="toast-t" id="toast-t"></div><div id="toast-b"></div></div>
 
 <script>
 const tg = window.Telegram?.WebApp;
-if (tg) { tg.ready(); tg.expand(); }
+if(tg){tg.ready();tg.expand();tg.BackButton.onClick(()=>handleBack());}
 
-// === ДАННЫЕ ===
-const SPECIES = [
-  { id:'ivy',      icon:'🌿', nameRu:'Плющ обыкновенный',     nameLatin:'Hedera helix',            zone:'ponarth', rarity:'common',   fact:'Может жить 400–500 лет. Плющ на стенах Понарта — ровесник пивоварни 1849 года.' },
-  { id:'moss',     icon:'🟢', nameRu:'Мох стенной',            nameLatin:'Bryum argenteum',          zone:'ponarth', rarity:'common',   fact:'Может ожить после 40 лет высыхания. Первый заселяет голый камень.' },
-  { id:'lichen',   icon:'🟡', nameRu:'Ксантория настенная',    nameLatin:'Xanthoria parietina',      zone:'ponarth', rarity:'common',   fact:'Симбиоз гриба и водоросли. Не растение. Живёт до 1000 лет.' },
-  { id:'celandine',icon:'🌼', nameRu:'Чистотел большой',       nameLatin:'Chelidonium majus',        zone:'ponarth', rarity:'common',   fact:'Оранжевый сок при надломе — природный антисептик, но токсичен.' },
-  { id:'nettle',   icon:'🌱', nameRu:'Крапива двудомная',      nameLatin:'Urtica dioica',            zone:'ponarth', rarity:'common',   fact:'Растёт у старых поселений — индикатор богатой азотом почвы.' },
-  { id:'hop',      icon:'🍃', nameRu:'Хмель обыкновенный',     nameLatin:'Humulus lupulus',          zone:'ponarth', rarity:'rare',     fact:'Если найдёшь у пивоварни Понарт — это не случайность. Растение для пива рядом с пивоварней 1849 года.' },
-  { id:'fireweed', icon:'🌸', nameRu:'Иван-чай',               nameLatin:'Epilobium angustifolium',  zone:'ponarth', rarity:'common',   fact:'Первым заселяет пожарища и разрушенные места. После войны — он первый.' },
-  { id:'wormwood', icon:'🌾', nameRu:'Полынь горькая',         nameLatin:'Artemisia absinthium',     zone:'ponarth', rarity:'common',   fact:'Абсент делают из полыни. Горечь — защита от поедания.' },
-  { id:'tansy',    icon:'💛', nameRu:'Пижма обыкновенная',     nameLatin:'Tanacetum vulgare',        zone:'ponarth', rarity:'common',   fact:'Запах отпугивает насекомых. Раньше клали в сундуки вместо нафталина.' },
-  { id:'elder',    icon:'🫐', nameRu:'Бузина чёрная',          nameLatin:'Sambucus nigra',           zone:'ponarth', rarity:'common',   fact:'В Средние века считалась магическим деревом. Из ягод — сироп и вино.' },
-  { id:'burdock',  icon:'🌀', nameRu:'Лопух большой',          nameLatin:'Arctium lappa',            zone:'ponarth', rarity:'common',   fact:'Прообраз застёжки-липучки. Изобретатель Велькро придумал её глядя на лопух.' },
-  { id:'linden',   icon:'🌳', nameRu:'Липа мелколистная',      nameLatin:'Tilia cordata',            zone:'ponarth', rarity:'common',   fact:'80–100 лет. Их сажали горожане Кёнигсберга. Дерево двух народов.' },
-  { id:'maple-ash',icon:'🍂', nameRu:'Клён ясенелистный',      nameLatin:'Acer negundo',             zone:'city',    rarity:'common',   fact:'Агрессивный пришелец из США. Завезён в СССР, теперь вытесняет местные виды.' },
-  { id:'hogweed',  icon:'⚠️', nameRu:'Борщевик Сосновского',   nameLatin:'Heracleum sosnowskyi',    zone:'city',    rarity:'common',   fact:'ОПАСЕН! Сок + солнце = ожог 3 степени. Завезён как кормовое, стал главным инвазивным видом.' },
-  { id:'stonecrop',icon:'⭐', nameRu:'Очиток едкий',           nameLatin:'Sedum acre',               zone:'ponarth', rarity:'uncommon', fact:'Суккулент — хранит воду в листьях. Растёт в трещинах где нет больше ничего.' },
-  { id:'rosehip',  icon:'🌹', nameRu:'Шиповник майский',       nameLatin:'Rosa canina',              zone:'ponarth', rarity:'uncommon', fact:'Плоды содержат витамина С в 40 раз больше чем лимон.' },
-  { id:'lilac',    icon:'💜', nameRu:'Сирень обыкновенная',    nameLatin:'Syringa vulgaris',         zone:'ponarth', rarity:'uncommon', fact:'Одичавшие кусты у старых домов — живые следы жизни до 1945 года.' },
-  { id:'plantain', icon:'🟤', nameRu:'Подорожник большой',     nameLatin:'Plantago major',           zone:'city',    rarity:'common',   fact:'Растёт только там где ходят люди. По нему можно найти старые тропы.' }
-];
-
-const LOCATIONS = [
-  { id:'ponarth',     name:'Пивоварня Понарт', type:'Особая локация', lat:54.6905, lng:20.5185, color:'#F4A435', history:'Основана в 1849 году. Старейшее промышленное предприятие района. Немецкие рабочие ходили по этим кирпичным стенам 175 лет назад.', speciesIds:['ivy','moss','lichen','celandine','nettle','hop','stonecrop','rosehip','lilac','elder'] },
-  { id:'kant',        name:'Остров Канта',     type:'Исторический',   lat:54.7065, lng:20.5120, color:'#7EB8F7', history:'Кнайпхоф — средневековый район Кёнигсберга. Кафедральный собор 1333 г. Могила Иммануила Канта.', speciesIds:['ivy','moss','linden','fireweed'] },
-  { id:'upper_lake',  name:'Верхнее озеро',    type:'Природная зона', lat:54.7180, lng:20.4980, color:'#4FC3F7', history:'Главный водоём Кёнигсберга с 1256 года. Лучшее место для наблюдения птиц в центре города.', speciesIds:['plantain','linden','wormwood'] },
-  { id:'fort5',       name:'Форт №5',          type:'Исторический',   lat:54.7380, lng:20.4560, color:'#CE93D8', history:'1878 год. Часть фортового кольца. Бои апреля 1945. В казематах — колония летучих мышей.', speciesIds:['moss','lichen'] }
-];
-
-const QUESTS = [
-  { id:'q1', title:'Живые стены Понарта', zone:'Понарт', desc:'Найди плющ, мох и лишайник на одной стене пивоварни. Три разных организма на одном кирпиче — это целая экосистема.', reward:'+150 очков', secret:false },
-  { id:'q2', title:'Тайна старой пивоварни ⭐', zone:'Понарт', desc:'Найди хмель рядом со стенами Понарта. Растение для пива, выросшее у пивоварни 1849 года — случайность?', reward:'+500 очков + значок', secret:false },
-  { id:'q3', title:'Детектив XIX века', zone:'Понарт', desc:'Найди кирпич с клеймом завода-производителя. По клейму можно определить год постройки стены.', reward:'+200 очков', secret:false },
-  { id:'q4', title:'🔐 Ночной наблюдатель', zone:'Форт №5', desc:'???', reward:'???', secret:true },
-  { id:'q5', title:'Дерево двух народов', zone:'Понарт', desc:'Найди липу с обхватом ствола больше двух рук. Ей 80–100 лет — её сажали горожане Кёнигсберга.', reward:'+100 очков', secret:false },
-  { id:'q6', title:'🔐 Инвазивный детектив', zone:'Город', desc:'???', reward:'???', secret:true }
-];
-
-// === СОСТОЯНИЕ ===
-const state = {
-  found: JSON.parse(localStorage.getItem('sledopyt_found') || '[]'),
-  points: parseInt(localStorage.getItem('sledopyt_points') || '0'),
-  level: parseInt(localStorage.getItem('sledopyt_level') || '1'),
-  mode: localStorage.getItem('sledopyt_mode') || 'family',
-  userName: tg?.initDataUnsafe?.user?.first_name || 'Следопыт'
+// ===================== DATA =====================
+const CAT = {
+  ecology:{label:'Экология',icon:'🌿',color:'#4CAF50',cls:'cat-ecology'},
+  history:{label:'История',icon:'🏛️',color:'#F4A435',cls:'cat-history'},
+  culture:{label:'Культура',icon:'🎨',color:'#CE93D8',cls:'cat-culture'},
+  animals:{label:'Животные',icon:'🦁',color:'#FF7043',cls:'cat-animals'},
+  secret:{label:'Секретные',icon:'🔐',color:'#90A4AE',cls:'cat-secret'}
 };
+const TYPE_LABEL={explore:'Исследование',quiz:'Тест',photo:'Фото',find:'Определить вид',audio:'Аудио'};
+const TYPE_ICON={explore:'📖',quiz:'❓',photo:'📸',find:'🔍',audio:'🎧'};
 
-function saveState() {
-  localStorage.setItem('sledopyt_found', JSON.stringify(state.found));
-  localStorage.setItem('sledopyt_points', state.points);
-  localStorage.setItem('sledopyt_level', state.level);
-  localStorage.setItem('sledopyt_mode', state.mode);
+const SPECIES=[
+  {id:'ivy',icon:'🌿',nameRu:'Плющ обыкновенный',nameLatin:'Hedera helix',zone:'ponarth',rarity:'common',description:'Вечнозелёная лиана с тёмно-зелёными глянцевыми листьями. Цепляется за кирпич усиками.',fact:'Может жить 400–500 лет. Плющ на стенах Понарта — ровесник пивоварни 1849 года.',where:'Стены пивоварни Понарт, старые здания'},
+  {id:'moss',icon:'🟢',nameRu:'Мох стенной',nameLatin:'Bryum argenteum',zone:'ponarth',rarity:'common',description:'Зелёный бархатистый налёт в швах между кирпичами.',fact:'Может ожить после 40 лет высыхания. Первый заселяет голый камень.',where:'Швы между кирпичами, затенённые углы'},
+  {id:'lichen',icon:'🟡',nameRu:'Ксантория настенная',nameLatin:'Xanthoria parietina',zone:'ponarth',rarity:'common',description:'Оранжево-жёлтые чешуйчатые корочки на кирпиче и бетоне.',fact:'Симбиоз гриба и водоросли. Не растение. Живёт до 1000 лет.',where:'Открытые поверхности стен, черепица'},
+  {id:'celandine',icon:'🌼',nameRu:'Чистотел большой',nameLatin:'Chelidonium majus',zone:'ponarth',rarity:'common',description:'Резные сизо-зел. листья. При надломе — оранжевый сок.',fact:'Оранжевый сок — природный антисептик, но токсичен при попадании внутрь.',where:'Подножия стен, затенённые углы'},
+  {id:'nettle',icon:'🌱',nameRu:'Крапива двудомная',nameLatin:'Urtica dioica',zone:'ponarth',rarity:'common',description:'Сердцевидные зубчатые листья. Жжётся при касании.',fact:'Растёт где богатая азотом почва — индикатор старых поселений.',where:'Вдоль заборов и стен, у фундаментов'},
+  {id:'hop',icon:'🍃',nameRu:'Хмель обыкновенный',nameLatin:'Humulus lupulus',zone:'ponarth',rarity:'rare',description:'Вьющееся растение с листьями как у винограда. Шершавый стебель.',fact:'Если найдёшь у пивоварни Понарт — это не случайность. Растение для пива рядом с пивоварней 1849 года.',where:'Заборы и ограждения вблизи пивоварни'},
+  {id:'fireweed',icon:'🌸',nameRu:'Иван-чай',nameLatin:'Epilobium angustifolium',zone:'ponarth',rarity:'common',description:'Высокое (до 1.5м). Пурпурные цветки колосом.',fact:'Первым заселяет пожарища и разрушенные места. После войны — он первый.',where:'Пустыри рядом с Понарт, нарушенные почвы'},
+  {id:'wormwood',icon:'🌾',nameRu:'Полынь горькая',nameLatin:'Artemisia absinthium',zone:'ponarth',rarity:'common',description:'Серебристо-серые перистые листья. Горький запах.',fact:'Абсент делают из полыни. Горечь — защита от поедания животными.',where:'Пустыри, обочины дорог у Понарт'},
+  {id:'tansy',icon:'💛',nameRu:'Пижма обыкновенная',nameLatin:'Tanacetum vulgare',zone:'ponarth',rarity:'common',description:'Тёмно-зел. перистые листья. Жёлтые пуговичные соцветия.',fact:'Запах отпугивает насекомых. Раньше клали в сундуки вместо нафталина.',where:'Пустыри и заборы у Понарт'},
+  {id:'elder',icon:'🫐',nameRu:'Бузина чёрная',nameLatin:'Sambucus nigra',zone:'ponarth',rarity:'common',description:'Куст до 6 м. Крупные листья с неприятным запахом. Чёрные ягоды.',fact:'В средние века считалась магическим деревом. Из ягод — сироп и вино.',where:'Старые дворы и закоулки вблизи пивоварни'},
+  {id:'burdock',icon:'🌀',nameRu:'Лопух большой',nameLatin:'Arctium lappa',zone:'ponarth',rarity:'common',description:'Огромные листья (до 50 см). Репейные шарики-цепляшки.',fact:'Прообраз застёжки-липучки. Изобретатель Велькро придумал её глядя на лопух.',where:'Задворки и пустыри у Понарт'},
+  {id:'linden',icon:'🌳',nameRu:'Липа мелколистная',nameLatin:'Tilia cordata',zone:'ponarth',rarity:'common',description:'Сердцевидные листья. Летом — медовый запах. Серая кора.',fact:'Большинству лип в Калининграде 80–100 лет. Их сажали горожане Кёнигсберга.',where:'Улицы вокруг Понарт, аллеи'},
+  {id:'maple-ash',icon:'🍂',nameRu:'Клён ясенелистный',nameLatin:'Acer negundo',zone:'city',rarity:'common',description:'Перистые листья (3–7 листочков). Зелёные крылатки-семена.',fact:'Агрессивный пришелец из США. Завезён в СССР, теперь вытесняет местные виды.',where:'Дороги и пустыри по всему городу'},
+  {id:'hogweed',icon:'⚠️',nameRu:'Борщевик Сосновского',nameLatin:'Heracleum sosnowskyi',zone:'city',rarity:'common',description:'Огромный (2–3м). Полые стебли с пятнами. ОПАСЕН.',fact:'Сок + солнце = ожог 3 степени. Завезён как кормовое, стал главным инвазивным врагом.',where:'Пустыри и берега ручьёв'},
+  {id:'stonecrop',icon:'⭐',nameRu:'Очиток едкий',nameLatin:'Sedum acre',zone:'ponarth',rarity:'uncommon',description:'Маленький (5–15 см). Мясистые листочки. Жёлтые цветки.',fact:'Суккулент — хранит воду в листьях. Растёт в трещинах где ничего нет.',where:'Трещины в кирпичных стенах и брусчатке'},
+  {id:'rosehip',icon:'🌹',nameRu:'Шиповник майский',nameLatin:'Rosa canina',zone:'ponarth',rarity:'uncommon',description:'Колючий кустарник. Розовые цветки. Красные плоды.',fact:'Плоды содержат витамина С в 40 раз больше чем лимон.',where:'Старые дворы у Понарт'},
+  {id:'lilac',icon:'💜',nameRu:'Сирень обыкновенная',nameLatin:'Syringa vulgaris',zone:'ponarth',rarity:'uncommon',description:'Крупные листья. Фиолетовые метёлки в мае.',fact:'Одичавшие кусты у старых домов — живые следы жизни до 1945 года.',where:'Старые дворы вокруг Понарт'},
+  {id:'plantain',icon:'🟤',nameRu:'Подорожник большой',nameLatin:'Plantago major',zone:'city',rarity:'common',description:'Широкие овальные листья с дугообразными жилками.',fact:'Растёт только там где ходят люди. По нему можно найти старые тропы.',where:'Вытоптанные тропы, щели в брусчатке'}
+];
+
+const LOCATIONS=[
+  {id:'ponarth',name:'Пивоварня Понарт',nameShort:'Понарт',lat:54.6905,lng:20.5185,color:'#F4A435',icon:'🍺',type:'history',history:'Основана в 1849 году Августом Хазелау. Старейшее промышленное предприятие района. Немецкие рабочие ходили по этим кирпичным стенам 175 лет назад. После войны — советский пивзавод. Сегодня — возрождённый бренд Понарт.',speciesIds:['ivy','moss','lichen','celandine','nettle','hop','stonecrop','rosehip','lilac','elder'],questIds:['ponarth_history','ponarth_hop_find','ponarth_brick','ponarth_ivy_photo','ponarth_plants_quiz']},
+  {id:'kant',name:'Остров Канта',nameShort:'О. Канта',lat:54.7065,lng:20.5120,color:'#7EB8F7',icon:'⛪',type:'history',history:'Кнайпхоф — средневековый район Кёнигсберга XIII века. Кафедральный собор 1333 года. Здесь похоронен Иммануил Кант. Район полностью снесён в 1960-70х — сейчас парк на руинах.',speciesIds:['ivy','moss','linden','fireweed'],questIds:['kant_cathedral','kant_heron_photo','kant_quiz']},
+  {id:'upper_lake',name:'Верхнее озеро',nameShort:'Верхнее озеро',lat:54.7180,lng:20.4980,color:'#4FC3F7',icon:'🦢',type:'ecology',history:'Обертайх — главный городской водоём Кёнигсберга с 1256 года. Питал воды оборонительного рва. Лучшее место для наблюдения птиц в центре города.',speciesIds:['plantain','linden','wormwood'],questIds:['lake_birds_photo','lake_quiz_coot','lake_ecology']},
+  {id:'fort5',name:'Форт №5',nameShort:'Форт №5',lat:54.7380,lng:20.4560,color:'#CE93D8',icon:'🏰',type:'history',history:'1878 год. Часть фортового кольца Кёнигсберга из 12 фортов. Жестокие бои в апреле 1945. В казематах — крупнейшая колония летучих мышей Калининграда.',speciesIds:['moss','lichen'],questIds:['fort_history','fort_bats_secret']},
+  {id:'zoo',name:'Калининградский зоопарк',nameShort:'Зоопарк',lat:54.7222,lng:20.5075,color:'#FF7043',icon:'🦁',type:'animals',history:'Основан в 1896 году как Кёнигсбергский зоопарк. После штурма апреля 1945 из почти 2000 животных выжили лишь четверо. Бегемот Ганс стал символом возрождения — его выходил советский ветеринар, вытащив 16 осколков. Сейчас — более 3000 животных, 400+ видов.',speciesIds:[],questIds:['zoo_hans_story','zoo_quiz_year','zoo_quiz_animals','zoo_photo_tiger','zoo_ecology_endangered','zoo_find_bird','zoo_secret_dawn']},
+  {id:'amber_museum',name:'Музей янтаря',nameShort:'Муз. янтаря',lat:54.7160,lng:20.5000,color:'#FFD54F',icon:'💎',type:'culture',history:'Расположен в Башне Дона — оборонительной башне Кёнигсберга 1853 года. Единственный в мире специализированный музей янтаря. Более 14 000 экспонатов.',speciesIds:['moss','lichen'],questIds:['amber_quiz_age','amber_quiz_mineral','amber_explore_inclusion']},
+  {id:'bunker',name:'Бункер Ляша',nameShort:'Бункер',lat:54.7085,lng:20.5025,color:'#78909C',icon:'🏚️',type:'history',history:'Командный бункер коменданта Кёнигсберга генерала Отто Ляша. 9 апреля 1945 здесь была подписана капитуляция — конец 700-летней истории Кёнигсберга.',speciesIds:['moss'],questIds:['bunker_explore','bunker_quiz_date']},
+  {id:'world_ocean',name:'Музей Мирового океана',nameShort:'Муз. океана',lat:54.7009,lng:20.5136,color:'#29B6F6',icon:'🚢',type:'culture',history:'Единственный в России музей такого масштаба. Суда у набережной: подводная лодка Б-413, рыболовный траулер, НИС «Космонавт Виктор Пацаев». Основан в 1990 году.',speciesIds:[],questIds:['ocean_explore','ocean_quiz_sub']},
+  {id:'brandenburger',name:'Бранденбургские ворота',nameShort:'Бр. ворота',lat:54.7089,lng:20.5067,color:'#A5D6A7',icon:'🚪',type:'history',history:'Единственные в мире средневековые городские ворота, до сих пор используемые по назначению. Построены в 1657 году. На фасаде — барельефы прусских военачальников.',speciesIds:['ivy','moss','lichen'],questIds:['brand_photo','brand_quiz','brand_ivy_find']},
+  {id:'friedland',name:'Фридландские ворота',nameShort:'Фр. ворота',lat:54.6978,lng:20.5048,color:'#FFCC02',icon:'🚪',type:'history',history:'Лучший музей среди семи сохранившихся ворот Кёнигсберга. Уникальная экспозиция о жизни горожан XIX-начала XX века.',speciesIds:['ivy','moss'],questIds:['friedland_explore','friedland_quiz']}
+];
+
+const QUESTS=[
+  // === ЗООПАРК ===
+  {id:'zoo_hans_story',locationId:'zoo',title:'История Ганса',subtitle:'Бегемот, переживший войну',category:'history',type:'explore',difficulty:1,points:150,icon:'🦛',isSecret:false,
+   content:`Апрель 1945 года. Кёнигсберг в огне. Из почти 2000 животных зоопарка выжили лишь четверо.
+
+Бегемот Ганс лежал раненый в воронке от бомбы, заполненной водой. Советский военный ветеринар Виктор Покровский провёл сложную операцию — вытащил из тела животного 16 осколков.
+
+Ганс пережил войну и прожил ещё 33 года. Он умер в 1978 году, прожив дольше, чем существовал советский Калининград. Несколько поколений детей выросло, считая его своим.
+
+Сегодня в зоопарке живут потомки тех, кто выжил рядом с Гансом — в обновлённых вольерах, в городе с новым именем.`,
+   question:'Сколько животных выжило в Кёнигсбергском зоопарке после штурма апреля 1945?',
+   options:['1 — только бегемот Ганс','4 — бегемот, лань, барсук и лось','12 — часть зверей спрятали в подвалах','Ни одного — всех эвакуировали заранее'],
+   correctIndex:1,explanation:'Выжили четверо: бегемот Ганс, лань, барсук и лось. Ганс стал самым известным из них.'},
+
+  {id:'zoo_quiz_year',locationId:'zoo',title:'Самый старый',subtitle:'История зоопарка',category:'history',type:'quiz',difficulty:1,points:100,icon:'📅',isSecret:false,
+   question:'В каком году основан Кёнигсбергский зоопарк?',
+   options:['1876','1886','1896','1906'],correctIndex:2,
+   explanation:'Зоопарк основан в 1896 году по инициативе городского совета Кёнигсберга. Он один из старейших зоопарков России — работает уже почти 130 лет.'},
+
+  {id:'zoo_quiz_animals',locationId:'zoo',title:'Сколько выжило?',subtitle:'Судьба зоопарка в 1945',category:'history',type:'quiz',difficulty:1,points:100,icon:'💥',isSecret:false,
+   question:'Из каких животных состояли те четверо выживших в зоопарке?',
+   options:['Бегемот, крокодил, слон, тигр','Бегемот, лань, барсук, лось','Лев, медведь, волк, лиса','Зебра, жираф, антилопа, страус'],correctIndex:1,
+   explanation:'Бегемот Ганс, лань, барсук и лось. Все остальные погибли во время бомбардировок и штурма города.'},
+
+  {id:'zoo_photo_tiger',locationId:'zoo',title:'Амурский тигр',subtitle:'Сфотографируй редкого хищника',category:'animals',type:'photo',difficulty:2,points:200,icon:'🐅',isSecret:false,
+   instruction:'Сфотографируй амурского тигра в зоопарке',
+   hint:'Амурский тигр — самый крупный тигр в мире и один из самых редких. В дикой природе их осталось около 600 особей. В зоопарке они обычно в левой части территории. Подойди близко и сделай хорошее фото.'},
+
+  {id:'zoo_ecology_endangered',locationId:'zoo',title:'Под угрозой',subtitle:'Виды Красной книги',category:'ecology',type:'quiz',difficulty:2,points:150,icon:'🔴',isSecret:false,
+   question:'Какой из этих видов находится на грани исчезновения — в мире осталось менее 100 особей?',
+   options:['Амурский тигр','Амурский леопард','Полярный медведь','Снежный барс'],correctIndex:1,
+   explanation:'Амурский леопард — самая редкая крупная кошка в мире. По данным WWF, в дикой природе их осталось около 80-90 особей. Кальце зоопарки участвуют в программе разведения.'},
+
+  {id:'zoo_find_bird',locationId:'zoo',title:'Птица зоопарка',subtitle:'Определи вид с помощью AI',category:'ecology',type:'find',difficulty:2,points:200,icon:'🦜',isSecret:false,
+   instruction:'Сфотографируй любую птицу в зоопарке — фламинго, павлина, пингвина или попугая. AI попробует определить вид.',
+   targetSpeciesIds:[]},
+
+  {id:'zoo_secret_dawn',locationId:'zoo',title:'Зоопарк на рассвете',subtitle:'Тайный квест',category:'secret',type:'photo',difficulty:3,points:500,icon:'🌅',isSecret:true,
+   instruction:'Сфотографируй ворота зоопарка в момент открытия (обычно в 9:00)',
+   hint:'Животные наиболее активны на рассвете — именно тогда они издают звуки, которые не слышны днём. Будь первым посетителем.'},
+
+  // === ПОНАРТ ===
+  {id:'ponarth_history',locationId:'ponarth',title:'Тайна старой пивоварни',subtitle:'История с 1849 года',category:'history',type:'explore',difficulty:1,points:150,icon:'🍺',isSecret:false,
+   content:`1849 год. Август Хазелау открывает пивоварню в районе Понарт на окраине Кёнигсберга.
+
+За 100 лет она стала одной из крупнейших в Восточной Пруссии. Её пиво пили прусские офицеры, кёнигсбергские бюргеры, рыбаки из порта.
+
+Апрель 1945. Кёнигсберг взят. Пивоварня становится советской. Её переименовывают, но продолжают варить пиво на тех же машинах, теми же методами.
+
+Сегодня бренд Понарт возрождён. Пиво варят снова — в том же районе, с той же историей за спиной.
+
+Стены вокруг тебя помнят всё это.`,
+   question:'В каком году основана пивоварня Понарт?',
+   options:['1799','1829','1849','1879'],correctIndex:2,
+   explanation:'Пивоварня основана в 1849 году Августом Хазелау. Это один из старейших действующих пивоваренных брендов в регионе.'},
+
+  {id:'ponarth_hop_find',locationId:'ponarth',title:'Хмель у пивоварни',subtitle:'Определи редкий вид',category:'ecology',type:'find',difficulty:3,points:500,icon:'🍃',isSecret:false,
+   instruction:'Найди хмель обыкновенный рядом со стенами пивоварни и сфотографируй. AI определит вид.',
+   hint:'Хмель — вьющееся растение с листьями похожими на виноград. Ищи на заборах и ограждениях вблизи старых корпусов. Это редкая находка — хмель у пивоварни 1849 года!',
+   targetSpeciesIds:['hop']},
+
+  {id:'ponarth_brick',locationId:'ponarth',title:'Детектив XIX века',subtitle:'Найди кирпич с клеймом',category:'history',type:'photo',difficulty:2,points:200,icon:'🧱',isSecret:false,
+   instruction:'Найди кирпич с клеймом завода-производителя на стенах пивоварни и сфотографируй',
+   hint:'Немецкие кирпичные заводы XIX-XX вв. ставили клеймо с названием завода и иногда годом. Смотри на уровне глаз и ниже. Клеймо — выдавленные буквы на кирпиче.'},
+
+  {id:'ponarth_ivy_photo',locationId:'ponarth',title:'Живые стены',subtitle:'Плющ на исторической стене',category:'ecology',type:'photo',difficulty:1,points:100,icon:'🌿',isSecret:false,
+   instruction:'Сфотографируй плющ, растущий на кирпичной стене пивоварни',
+   hint:'Ищи тёмно-зелёные глянцевые листья с 3-5 лопастями, которые цепляются прямо за кирпич. Сделай фото так чтобы были видны и листья, и кирпичная стена.'},
+
+  {id:'ponarth_plants_quiz',locationId:'ponarth',title:'Жизнь на кирпиче',subtitle:'Экология старых стен',category:'ecology',type:'quiz',difficulty:2,points:150,icon:'🔬',isSecret:false,
+   question:'Что из перечисленного является лишайником, а не растением?',
+   options:['Плющ обыкновенный','Мох стенной','Ксантория настенная','Чистотел большой'],correctIndex:2,
+   explanation:'Ксантория (лишайник) — это не растение, а симбиоз гриба и водоросли. Гриб обеспечивает структуру и влагу, водоросль — фотосинтез. Они живут вместе как один организм уже сотни миллионов лет.'},
+
+  // === ЗООПАРК (больше) ===
+  // === ОСТРОВ КАНТА ===
+  {id:'kant_cathedral',locationId:'kant',title:'Собор на острове',subtitle:'История с 1333 года',category:'history',type:'explore',difficulty:1,points:150,icon:'⛪',isSecret:false,
+   content:`1333 год. На острове посреди реки Прегель немецкие рыцари-крестоносцы начинают строить Кафедральный собор.
+
+Он строился 100 лет. Был одним из самых красивых готических соборов Пруссии.
+
+Здесь хоронили великих магистров Тевтонского ордена. Здесь Иммануил Кант, величайший философ эпохи Просвещения, нашёл своё последнее пристанище в 1804 году.
+
+Апрель 1945. Собор сгорел во время штурма. Стены устояли, но купол рухнул. Полвека руины стояли нетронутыми.
+
+Реставрация началась в 1990х. Сегодня в соборе — органный зал и музей Канта.`,
+   question:'В каком году был построен Кафедральный собор на острове?',
+   options:['1233-1260','1333-1380','1433-1480','1533-1580'],correctIndex:1,
+   explanation:'Строительство началось в 1333 году и завершилось около 1380 года. Собор строился почти 50 лет.'},
+
+  {id:'kant_heron_photo',locationId:'kant',title:'Терпеливый охотник',subtitle:'Сфотографируй серую цаплю',category:'ecology',type:'photo',difficulty:1,points:100,icon:'🦢',isSecret:false,
+   instruction:'Найди и сфотографируй серую цаплю у берегов острова Канта',
+   hint:'Серые цапли часто стоят неподвижно у воды, высматривая рыбу. Это не лень — это охота. Птица может стоять так часами. Ищи у берегов реки Преголя вокруг острова.'},
+
+  {id:'kant_quiz',locationId:'kant',title:'Философ Кёнигсберга',subtitle:'Тест о Иммануиле Канте',category:'culture',type:'quiz',difficulty:2,points:150,icon:'🧠',isSecret:false,
+   question:'Что особенного в том, что Кант похоронен именно здесь — у стен Кафедрального собора?',
+   options:['Он сам завещал это место','Это единственное место где он был','Он никогда не покидал Кёнигсберг всю жизнь','Собор построен специально для него'],correctIndex:2,
+   explanation:'Кант прожил всю жизнь в Кёнигсберге и никогда не уезжал дальше 40 км от города. Это один из самых знаменитых философов в истории, который тем не менее вёл тихую провинциальную жизнь.'},
+
+  // === ВЕРХНЕЕ ОЗЕРО ===
+  {id:'lake_birds_photo',locationId:'upper_lake',title:'Утиная перепись',subtitle:'Фото-квест у озера',category:'ecology',type:'photo',difficulty:1,points:150,icon:'🦆',isSecret:false,
+   instruction:'Сфотографируй минимум 3 разных вида птиц на Верхнем озере за одну прогулку',
+   hint:'Ищи: кряквы (обычные утки), лысухи (чёрные с белым лбом), чомги (хохлатые), бакланы (сушат крылья с раскрытыми крыльями), серые цапли (стоят у берега), лебеди-шипуны. Сделай отдельное фото каждого вида.'},
+
+  {id:'lake_quiz_coot',locationId:'upper_lake',title:'Не утка!',subtitle:'Тест на внимательность',category:'ecology',type:'quiz',difficulty:1,points:100,icon:'🐦',isSecret:false,
+   question:'Лысуха — чёрная птица с белым лбом, живёт на воде. Кем она приходится уткам?',
+   options:['Близкий родственник — семейство утиных','Дальний родственник — родственница чайки','Не родственник вообще — ближайший родич журавль','Это молодая утка ещё без окраски'],correctIndex:2,
+   explanation:'Несмотря на водный образ жизни, лысуха (Fulica atra) относится к семейству пастушковых и ближайший её родственник — журавль! Конвергентная эволюция сделала её похожей на утку, но генетически они очень далеки.'},
+
+  {id:'lake_ecology',locationId:'upper_lake',title:'Городское озеро',subtitle:'Экосистема в центре города',category:'ecology',type:'explore',difficulty:1,points:100,icon:'🌊',isSecret:false,
+   content:`Верхнее озеро — не просто красивое место. Это живая экосистема прямо в центре города.
+
+Здесь живут десятки видов птиц. Рыба — плотва, карп, окунь — привлекает цапель и бакланов. Водные растения дают пищу уткам. Ряска на поверхности — лёгкие озера.
+
+Инвазивный враг: ротан-головешка (Perccottus glenii) — маленькая рыбка из Китая — уже захватила многие подмосковные водоёмы. Пока Верхнее озеро чисто, но угроза реальна.
+
+Зимой, когда озеро замерзает, птицы собираются у прорубей — иногда сотни особей на пятачке чистой воды.
+
+Ты видишь сейчас живую систему, которая работала ещё во времена Кёнигсберга.`,
+   question:'Что такое ряска на поверхности воды?',
+   options:['Цветущие водоросли','Загрязнение воды','Маленькое цветковое растение','Личинки комаров'],correctIndex:2,
+   explanation:'Ряска (Lemna minor) — одно из самых маленьких цветковых растений в мире. Каждый листик размером 1-3 мм — это отдельное растение со своими корешками. Утки едят её с удовольствием.'},
+
+  // === ФОРТ №5 ===
+  {id:'fort_history',locationId:'fort5',title:'Кольцо из фортов',subtitle:'Система обороны Кёнигсберга',category:'history',type:'explore',difficulty:2,points:200,icon:'🏰',isSecret:false,
+   content:`1878 год. Прусские военные инженеры строят вокруг Кёнигсберга кольцо из 12 фортов.
+
+Каждый форт — самостоятельная крепость: казармы, склады боеприпасов, система рвов и валов. Все форты соединены дорогами и могли поддерживать друг друга огнём.
+
+Апрель 1945. Советские войска штурмуют Кёнигсберг. Форт №5 — один из ключевых узлов обороны. Бои за него шли несколько дней.
+
+Сегодня форт — музей. Но его настоящие обитатели — летучие мыши. Несколько видов зимуют в глубоких казематах: там постоянная температура и влажность, идеальные условия для зимней спячки.`,
+   question:'Сколько фортов входило в оборонительное кольцо Кёнигсберга?',
+   options:['7','9','12','15'],correctIndex:2,
+   explanation:'12 фортов, построенных в 1878-1882 годах. Форты пронумерованы от 1 до 12. Форт №5 носит имя короля Фридриха Вильгельма III.'},
+
+  {id:'fort_bats_secret',locationId:'fort5',title:'Ночная охота',subtitle:'Секретный квест',category:'secret',type:'photo',difficulty:3,points:500,icon:'🦇',isSecret:true,
+   instruction:'Сфотографируй летящую летучую мышь у форта после захода солнца',
+   hint:'Рыжие вечерницы начинают охотиться сразу после захода солнца. Встань у входа в форт и наблюдай небо. Летучие мыши летают зигзагами, ловя насекомых на лету — совсем не как птицы.'},
+
+  // === МУЗЕЙ ЯНТАРЯ ===
+  {id:'amber_quiz_age',locationId:'amber_museum',title:'Машина времени',subtitle:'Возраст янтаря',category:'culture',type:'quiz',difficulty:1,points:100,icon:'⏰',isSecret:false,
+   question:'Сколько лет балтийскому янтарю?',
+   options:['5–10 тысяч лет','2–5 миллионов лет','40–50 миллионов лет','200–300 миллионов лет'],correctIndex:2,
+   explanation:'Балтийский янтарь образовался 40–50 миллионов лет назад из смолы хвойных деревьев. В это время на месте Балтийского моря рос густой лес, а климат был субтропическим.'},
+
+  {id:'amber_quiz_mineral',locationId:'amber_museum',title:'Научное название',subtitle:'Химия янтаря',category:'culture',type:'quiz',difficulty:2,points:150,icon:'🔬',isSecret:false,
+   question:'Как называется балтийский янтарь в науке?',
+   options:['Смолит','Сукцинит','Ретинит','Копалит'],correctIndex:1,
+   explanation:'Сукцинит (от лат. succinum — янтарь). Это единственный вид янтаря, содержащий янтарную кислоту — суккциновую кислоту, которая используется в медицине и пищевой промышленности.'},
+
+  {id:'amber_explore_inclusion',locationId:'amber_museum',title:'Инклюзия',subtitle:'Жизнь замёрзшая на 40 млн лет',category:'culture',type:'explore',difficulty:2,points:200,icon:'🔍',isSecret:false,
+   content:`Инклюзия — это организм, попавший в смолу и сохранившийся в янтаре миллионы лет.
+
+Комар из «Парка Юрского периода» — реальный феномен. В янтаре находят комаров, мух, пауков, жуков, даже лягушек и ящериц. Самая богатая коллекция инклюзий хранится именно здесь.
+
+В 2021 году в янтаре нашли клеща возрастом 35 миллионов лет с паразитом внутри — редчайшая находка.
+
+Посмотри на янтарь с инклюзией в музее. Это не украшение — это окно в доисторический мир.`,
+   question:'Как называется организм, застывший внутри янтаря?',
+   options:['Ретинид','Инклюзия','Суккулент','Сукцинит'],correctIndex:1,
+   explanation:'Инклюзия (от лат. inclusio — включение). Инклюзии в янтаре — настоящий клад для учёных: они позволяют изучать животных и растения, живших десятки миллионов лет назад.'},
+
+  // === БУНКЕР ЛЯША ===
+  {id:'bunker_explore',locationId:'bunker',title:'Последний день Кёнигсберга',subtitle:'9 апреля 1945 года',category:'history',type:'explore',difficulty:2,points:200,icon:'📜',isSecret:false,
+   content:`6 апреля 1945 года начался финальный штурм Кёнигсберга. Четыре советских армии — 137 000 солдат — атаковали город со всех сторон.
+
+Комендант города генерал Отто Ляш понимал: сопротивление бессмысленно. Гитлер требовал держаться до последнего. Но это значило гибель тысяч мирных жителей.
+
+9 апреля 1945. В 21:30, в этом бункере, Ляш подписал капитуляцию.
+
+Фюрер заочно приговорил его к смертной казни. Семью Ляша арестовали как заложников. Сам генерал провёл в советском плену 10 лет.
+
+700-летняя история Кёнигсберга закончилась в этой комнате.`,
+   question:'Сколько дней длился финальный штурм Кёнигсберга?',
+   options:['2 дня','4 дня','10 дней','30 дней'],correctIndex:1,
+   explanation:'Штурм начался 6 апреля и завершился капитуляцией 9 апреля 1945 года — 4 дня. Это был молниеносный штурм: немецкое командование ожидало, что город продержится значительно дольше.'},
+
+  {id:'bunker_quiz_date',locationId:'bunker',title:'Дата капитуляции',subtitle:'Тест по истории',category:'history',type:'quiz',difficulty:1,points:100,icon:'📅',isSecret:false,
+   question:'Когда была подписана капитуляция Кёнигсберга?',
+   options:['2 мая 1945','9 апреля 1945','30 апреля 1945','8 мая 1945'],correctIndex:1,
+   explanation:'9 апреля 1945 года — именно эта дата стала концом Кёнигсберга. Обратите внимание: это за месяц до капитуляции Германии (8 мая 1945). Кёнигсберг сдался одним из первых.'},
+
+  // === МУЗЕЙ МИРОВОГО ОКЕАНА ===
+  {id:'ocean_explore',locationId:'world_ocean',title:'Флот у причала',subtitle:'Музей под открытым небом',category:'culture',type:'explore',difficulty:1,points:150,icon:'🚢',isSecret:false,
+   content:`У набережной реки Преголя стоят настоящие советские суда — не макеты, а реальные корабли, которые бороздили мировые океаны.
+
+Подводная лодка Б-413. Дизельная субмарина проекта 641. В годы Холодной войны патрулировала Атлантику. Длина — 91 метр. Экипаж — 78 человек. Ты можешь зайти внутрь.
+
+НИС «Космонавт Виктор Пацаев» — единственное судно в мире, входящее в состав Командно-измерительного комплекса России. Оно всё ещё работает!
+
+Рыболовный траулер СРТ-129 — такие суда в советское время кормили страну. За один рейс вылавливали сотни тонн рыбы.`,
+   question:'Что особенного в научно-исследовательском судне «Космонавт Виктор Пацаев»?',
+   options:['Это первое советское судно','Оно всё ещё работает по назначению','Оно самое большое в музее','На нём совершили кругосветное плавание'],correctIndex:1,
+   explanation:'НИС «Космонавт Виктор Пацаев» — единственный в мире действующий корабль в составе российской сети командно-измерительных комплексов. Являясь экспонатом музея, он продолжает нести вахту.'},
+
+  {id:'ocean_quiz_sub',locationId:'world_ocean',title:'Глубина погружения',subtitle:'Тест о подводной лодке',category:'culture',type:'quiz',difficulty:2,points:150,icon:'🤿',isSecret:false,
+   question:'На какую максимальную глубину могла погружаться подводная лодка Б-413?',
+   options:['100 метров','240 метров','500 метров','1000 метров'],correctIndex:1,
+   explanation:'Дизельные субмарины проекта 641 имели рабочую глубину погружения 240 метров. На такой глубине давление воды составляет 24 атмосферы — в 24 раза больше атмосферного.'},
+
+  // === БРАНДЕНБУРГСКИЕ ВОРОТА ===
+  {id:'brand_photo',locationId:'brandenburger',title:'Живые ворота',subtitle:'Сфотографируй проезжающий транспорт',category:'history',type:'photo',difficulty:1,points:100,icon:'🚌',isSecret:false,
+   instruction:'Сфотографируй транспорт, проезжающий через Бранденбургские ворота',
+   hint:'Эти ворота 1657 года до сих пор используются как проезд! Через них ежедневно едут машины и автобусы — как через ворота XVII века. Поймай момент когда через них проезжает транспорт.'},
+
+  {id:'brand_quiz',locationId:'brandenburger',title:'Уникальные ворота',subtitle:'Тест об истории ворот',category:'history',type:'quiz',difficulty:1,points:100,icon:'🚪',isSecret:false,
+   question:'Что делает Бранденбургские ворота уникальными в мировом масштабе?',
+   options:['Они самые старые в Европе','Единственные в мире средневековые ворота, используемые для проезда','Через них прошёл Наполеон','Они построены без единого гвоздя'],correctIndex:1,
+   explanation:'Бранденбургские ворота Калининграда (не путать с Берлинскими!) — единственные в мире средневековые городские ворота, через которые до сих пор идёт городской транспорт. Построены в 1657 году.'},
+
+  {id:'brand_ivy_find',locationId:'brandenburger',title:'Плющ на воротах',subtitle:'Двойное открытие',category:'ecology',type:'find',difficulty:2,points:300,icon:'🌿',isSecret:false,
+   instruction:'Найди плющ, растущий прямо на стенах Бранденбургских ворот, и сфотографируй для AI-определения',
+   hint:'Плющ на исторических воротах — это «двойное открытие»: живой организм на историческом памятнике. Ищи тёмно-зелёные листья, цепляющиеся за камень ворот.',
+   targetSpeciesIds:['ivy']},
+
+  // === ФРИДЛАНДСКИЕ ВОРОТА ===
+  {id:'friedland_explore',locationId:'friedland',title:'Кёнигсберг XIX века',subtitle:'Жизнь в старом городе',category:'history',type:'explore',difficulty:1,points:150,icon:'🏠',isSecret:false,
+   content:`Войди в Фридландские ворота и окажись в Кёнигсберге XIX века.
+
+Здесь восстановлена повседневная жизнь горожан: мастерские, лавки, жилые интерьеры. Это не богатые особняки — это жизнь обычных людей: сапожников, аптекарей, торговцев.
+
+На улицах звучала немецкая речь. Дети ходили в школу через эти самые ворота. Рыбаки везли улов на рынок мимо них на телегах.
+
+Ворота стоят с 1857 года — они помнят несколько поколений горожан, двух мировых войн, смену трёх государств.
+
+Выйдешь через ворота — и снова в современном Калининграде. Но теперь ты знаешь, что за этим городом стоит.`,
+   question:'В каком веке были построены Фридландские ворота?',
+   options:['XVII век (1600-е)','XVIII век (1700-е)','XIX век (1800-е)','XX век (1900-е)'],correctIndex:2,
+   explanation:'Фридландские ворота построены в 1857-1862 годах. Они являются частью внешнего оборонительного кольца Кёнигсберга, возведённого в середине XIX века.'},
+
+  {id:'friedland_quiz',locationId:'friedland',title:'Семь ворот',subtitle:'Тест о воротах Кёнигсберга',category:'history',type:'quiz',difficulty:2,points:150,icon:'🔢',isSecret:false,
+   question:'Сколько ворот Кёнигсберга сохранилось до наших дней?',
+   options:['3','5','7','9'],correctIndex:2,
+   explanation:'Из 9 ворот Кёнигсберга сохранилось 7: Бранденбургские, Фридландские, Королевские, Россгартенские, Закхаймские, Аусфальские и Железнодорожные. Они все находятся в Калининграде и доступны для посещения.'}
+];
+
+// ===================== STATE =====================
+const KEY='sledopyt_v2';
+let state={
+  discovered:[],completedQuests:[],
+  points:0,categoryPoints:{ecology:0,history:0,culture:0,animals:0,secret:0},
+  level:1,mode:'family',
+  userName:tg?.initDataUnsafe?.user?.first_name||'Следопыт'
+};
+function loadState(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s)Object.assign(state,s);}catch(e){}}
+function saveState(){localStorage.setItem(KEY,JSON.stringify(state));}
+loadState();
+
+const LEVELS=[,'Наблюдатель','Следопыт','Натуралист','Исследователь','Учёный'];
+const LEVEL_PTS=[0,0,300,700,1500,3000];
+function calcLevel(pts){let l=1;for(let i=1;i<LEVEL_PTS.length;i++)if(pts>=LEVEL_PTS[i])l=i;return l;}
+
+// ===================== NAV =====================
+let currentScreen='map-screen';
+document.querySelectorAll('.nb').forEach(b=>{
+  b.addEventListener('click',()=>{
+    if(b.dataset.s===currentScreen)return;
+    closeAllOv();
+    currentScreen=b.dataset.s;
+    document.querySelectorAll('.nb').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById(b.dataset.s).classList.add('active');
+    if(b.dataset.s==='atlas-screen')renderAtlas();
+    if(b.dataset.s==='quests-screen')renderQuests();
+    if(b.dataset.s==='progress-screen')renderProgress();
+    if(b.dataset.s==='map-screen')setTimeout(()=>map?.invalidateSize(),50);
+  });
+});
+
+// OVERLAY STACK
+const ovStack=[];
+function openOv(id,renderFn){
+  ovStack.push(id);
+  if(renderFn)renderFn();
+  requestAnimationFrame(()=>document.getElementById(id).classList.add('show'));
+  tg?.BackButton.show();
 }
-
-const LEVEL_NAMES = ['', 'Наблюдатель', 'Следопыт', 'Натуралист', 'Исследователь', 'Учёный'];
-const LEVEL_THRESHOLDS = [0, 0, 200, 500, 1000, 2000];
-
-function calcLevel(pts) {
-  let lvl = 1;
-  for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) if (pts >= LEVEL_THRESHOLDS[i]) lvl = i;
-  return lvl;
+function closeOv(id){
+  const el=document.getElementById(id);
+  el.classList.remove('show');
+  const i=ovStack.lastIndexOf(id);
+  if(i>-1)ovStack.splice(i,1);
+  if(ovStack.length===0)tg?.BackButton.hide();
 }
+function closeAllOv(){ovStack.forEach(id=>document.getElementById(id)?.classList.remove('show'));ovStack.length=0;tg?.BackButton.hide();}
+function handleBack(){if(ovStack.length>0)closeOv(ovStack[ovStack.length-1]);}
 
-// === КАРТА ===
+// ===================== MAP =====================
 let map;
-function initMap() {
-  map = L.map('map', { zoomControl:false, attributionControl:false }).setView([54.710, 20.508], 13);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom:19 }).addTo(map);
-
-  LOCATIONS.forEach(loc => {
-    const marker = L.circleMarker([loc.lat, loc.lng], {
-      radius: loc.id === 'ponarth' ? 14 : 10,
-      fillColor: loc.color,
-      color: loc.id === 'ponarth' ? '#fff' : loc.color,
-      weight: loc.id === 'ponarth' ? 2 : 1,
-      fillOpacity: 0.9
+function initMap(){
+  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([54.710,20.508],13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
+  LOCATIONS.forEach(loc=>{
+    const isPrimary=loc.id==='ponarth'||loc.id==='zoo';
+    const m=L.circleMarker([loc.lat,loc.lng],{
+      radius:isPrimary?14:10,fillColor:loc.color,color:'rgba(255,255,255,0.3)',weight:1.5,fillOpacity:.9
     }).addTo(map);
-
-    const label = L.divIcon({
-      html: `<div style="color:${loc.color};font-size:11px;font-weight:700;white-space:nowrap;text-shadow:0 1px 3px #000">${loc.name}</div>`,
-      iconAnchor: [-16, 8], className:''
-    });
-    L.marker([loc.lat, loc.lng], { icon: label }).addTo(map);
-    marker.on('click', () => openLocationSheet(loc));
+    const label=L.divIcon({html:`<div style="color:${loc.color};font-size:10px;font-weight:700;white-space:nowrap;text-shadow:0 1px 4px #000,0 0 8px #000">${loc.icon} ${loc.nameShort}</div>`,iconAnchor:[-14,8],className:''});
+    L.marker([loc.lat,loc.lng],{icon:label}).addTo(map);
+    m.on('click',()=>openLocation(loc));
   });
 }
 
-function openLocationSheet(loc) {
-  document.getElementById('sheet-type').textContent = loc.type;
-  document.getElementById('sheet-name').textContent = loc.name;
-  document.getElementById('sheet-history').textContent = loc.history;
-  const chips = document.getElementById('sheet-chips');
-  chips.innerHTML = loc.speciesIds.map(sid => {
-    const sp = SPECIES.find(s => s.id === sid);
-    const found = state.found.includes(sid);
-    return `<div class="chip ${found ? 'found' : ''}" onclick="openSpeciesModal('${sid}')">${sp.icon} ${sp.nameRu}</div>`;
-  }).join('');
-  document.getElementById('location-sheet').classList.add('open');
+// ===================== LOCATION VIEW =====================
+function openLocation(loc){
+  document.getElementById('ovl-title').textContent=loc.name;
+  document.getElementById('ovl-badge').textContent=loc.type==='animals'?'Животные':loc.type==='ecology'?'Экология':loc.type==='culture'?'Культура':'История';
+  openOv('ov-location',()=>{
+    const quests=QUESTS.filter(q=>q.locationId===loc.id);
+    const done=quests.filter(q=>state.completedQuests.includes(q.id)).length;
+    document.getElementById('ovl-content').innerHTML=`
+      <div class="loc-banner" style="background:linear-gradient(135deg,${loc.color}22,${loc.color}44)">${loc.icon}</div>
+      <div class="loc-type-badge">${CAT[loc.type]?.icon||'📍'} ${CAT[loc.type]?.label||loc.type}</div>
+      <div class="loc-name">${loc.name}</div>
+      <div class="loc-history">${loc.history}</div>
+      ${loc.speciesIds.length?`<div class="sec-title">🌿 Виды здесь</div><div class="chips">${loc.speciesIds.map(sid=>{const sp=SPECIES.find(s=>s.id===sid);const found=state.discovered.includes(sid);return sp?`<div class="chip ${found?'found':''}" onclick="openSpecies('${sid}')">${sp.icon} ${sp.nameRu}</div>`:''}).join('')}</div>`:''}
+      <div class="sec-title">📋 Квесты (${done}/${quests.length} выполнено)</div>
+      ${quests.map(q=>renderQuestItem(q)).join('')}
+      <div style="height:16px"></div>`;
+  });
+}
+function renderQuestItem(q){
+  const done=state.completedQuests.includes(q.id);
+  const cat=CAT[q.category]||CAT.history;
+  return `<div class="qi ${q.isSecret?'secret':''} ${done?'done':''}" onclick="openQuestDetail('${q.id}')">
+    <div class="qi-icon">${q.icon}</div>
+    <div class="qi-body">
+      <div class="qi-title">${q.title}${q.isSecret&&!done?' 🔒':''}</div>
+      <div class="qi-sub">${q.subtitle}</div>
+      <div class="qi-meta">
+        <span class="cat-badge ${cat.cls}">${cat.icon} ${cat.label}</span>
+        <span class="type-badge">${TYPE_ICON[q.type]} ${TYPE_LABEL[q.type]}</span>
+        ${done?'<span class="done-mark">✅</span>':`<span class="pts">+${q.points} очков</span>`}
+      </div>
+    </div>
+  </div>`;
 }
 
-document.getElementById('map').addEventListener('click', e => {
-  if (e.target === document.getElementById('map') || e.target.closest('.leaflet-container:not(.leaflet-popup)'))
-    document.getElementById('location-sheet').classList.remove('open');
+// ===================== QUEST DETAIL =====================
+function openQuestDetail(id){
+  const q=QUESTS.find(x=>x.id===id);
+  if(!q)return;
+  document.getElementById('ovq-title').textContent=q.title;
+  const cat=CAT[q.category]||CAT.history;
+  document.getElementById('ovq-badge').textContent=cat.icon+' '+cat.label;
+  const done=state.completedQuests.includes(q.id);
+  openOv('ov-quest',()=>{
+    const typeDesc={
+      explore:'Прочитай историю и ответь на вопрос',
+      quiz:'Ответь на вопрос с вариантами',
+      photo:'Сфотографируй объект',
+      find:'Сфотографируй и AI определит вид',
+      audio:'Послушай историю и ответь'
+    };
+    document.getElementById('ovq-content').innerHTML=`
+      <div class="qd-icon">${q.icon}</div>
+      <div class="qd-title">${q.title}</div>
+      <div class="qd-sub">${q.subtitle}</div>
+      <div class="qd-metas">
+        <span class="cat-badge ${cat.cls}">${cat.icon} ${cat.label}</span>
+        <span class="type-badge">${TYPE_ICON[q.type]} ${TYPE_LABEL[q.type]}</span>
+        <span class="cat-badge" style="background:rgba(244,164,53,.1);color:var(--amber)">+${q.points} очков</span>
+        <div class="diff-dots">${[1,2,3].map(i=>`<div class="diff-dot" style="background:${i<=q.difficulty?'var(--amber)':'var(--brd)'}"></div>`).join('')}</div>
+      </div>
+      <div class="qd-type-info">
+        <div class="qd-type-icon">${TYPE_ICON[q.type]}</div>
+        <div><div style="font-weight:600;margin-bottom:4px">${TYPE_LABEL[q.type]}</div><div class="qd-type-text">${typeDesc[q.type]||''}</div></div>
+      </div>
+      ${done?'<div class="quiz-result ok">✅ Этот квест уже выполнен! Ты заработал '+q.points+' очков.</div>':''}
+      ${q.isSecret&&!done?'<div class="quiz-result" style="background:rgba(144,164,174,.1);border-color:#90A4AE;color:#90A4AE">🔐 Секретный квест. Особые условия для разблокировки.</div>':''}
+      <button class="btn ${done?'btn-secondary':'btn-primary'}" onclick="startQuest('${q.id}')">
+        ${done?'🔄 Пройти снова':'▶️ Начать квест'}
+      </button>
+      <div style="height:16px"></div>`;
+  });
+}
+
+// ===================== QUEST EXECUTION =====================
+let activeQuest=null;
+let photoCapCallback=null;
+let selectedOpt=null;
+let quizAnswered=false;
+
+function startQuest(id){
+  activeQuest=QUESTS.find(q=>q.id===id);
+  if(!activeQuest)return;
+  const cat=CAT[activeQuest.category]||CAT.history;
+  document.getElementById('ove-title').textContent=activeQuest.title;
+  document.getElementById('ove-badge').textContent=TYPE_LABEL[activeQuest.type];
+  openOv('ov-exec',()=>renderExec());
+}
+
+function renderExec(){
+  const q=activeQuest;
+  if(!q)return;
+  const c=document.getElementById('ove-content');
+  if(q.type==='explore'||q.type==='audio'){
+    quizAnswered=false;selectedOpt=null;
+    c.innerHTML=`
+      <div class="eq-content">${q.content||'Нет содержимого'}</div>
+      ${q.question?`<div class="eq-question">${q.question}</div>
+      <div class="quiz-opts">${(q.options||[]).map((o,i)=>`<div class="qopt" onclick="selectOpt(this,${i})"><div class="qopt-letter">${'ABCD'[i]}</div><div>${o}</div></div>`).join('')}</div>
+      <button class="btn btn-primary" id="check-btn" onclick="checkQuiz()" disabled>Проверить ответ</button>`
+      :`<button class="btn btn-primary" onclick="completeExplore()">✅ Прочитал, понял</button>`}
+      <div style="height:16px"></div>`;
+  } else if(q.type==='quiz'){
+    quizAnswered=false;selectedOpt=null;
+    c.innerHTML=`
+      <div class="quiz-q">${q.question}</div>
+      <div class="quiz-opts">${(q.options||[]).map((o,i)=>`<div class="qopt" onclick="selectOpt(this,${i})"><div class="qopt-letter">${'ABCD'[i]}</div><div>${o}</div></div>`).join('')}</div>
+      <button class="btn btn-primary" id="check-btn" onclick="checkQuiz()" disabled>Проверить ответ</button>
+      <div style="height:16px"></div>`;
+  } else if(q.type==='photo'){
+    c.innerHTML=`
+      <div class="photo-instruction">${q.instruction||'Сделайте фото'}</div>
+      <div class="photo-hint">💡 ${q.hint||''}</div>
+      <div class="photo-placeholder" id="ph-placeholder"><div style="font-size:48px">📷</div><div>Нажми чтобы сделать фото</div></div>
+      <img class="photo-preview" id="ph-preview">
+      <button class="btn btn-primary" id="ph-confirm" style="display:none" onclick="completePhoto()">✅ Засчитать находку</button>
+      <button class="btn btn-secondary" onclick="triggerPhotoCapture()" style="margin-top:10px">📸 Сделать фото</button>
+      <div style="height:16px"></div>`;
+    document.getElementById('ph-placeholder').onclick=()=>triggerPhotoCapture();
+    photoCapCallback='photo';
+  } else if(q.type==='find'){
+    photoCapCallback='find';
+    c.innerHTML=`
+      <div class="photo-instruction">${q.instruction||'Сфотографируй вид для определения'}</div>
+      <div class="photo-hint">💡 ${q.hint||''}</div>
+      <div id="find-result-area"></div>
+      <button class="btn btn-primary" onclick="photoCapCallback='find';triggerPhotoCapture()">🔍 Навести камеру</button>
+      <div style="height:16px"></div>`;
+  }
+}
+
+function selectOpt(el,idx){
+  if(quizAnswered)return;
+  document.querySelectorAll('.qopt').forEach(x=>x.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedOpt=idx;
+  const btn=document.getElementById('check-btn');
+  if(btn)btn.disabled=false;
+}
+
+function checkQuiz(){
+  if(selectedOpt===null||quizAnswered)return;
+  quizAnswered=true;
+  const q=activeQuest;
+  const correct=selectedOpt===q.correctIndex;
+  document.querySelectorAll('.qopt').forEach((el,i)=>{
+    if(i===q.correctIndex)el.classList.add('correct');
+    else if(i===selectedOpt)el.classList.add('wrong');
+  });
+  const btn=document.getElementById('check-btn');
+  if(btn)btn.style.display='none';
+  const res=document.createElement('div');
+  res.className=`quiz-result ${correct?'ok':'fail'} anim-slide`;
+  res.innerHTML=`${correct?'✅ Верно!':'❌ Неверно. Правильный ответ: '+q.options[q.correctIndex]}<div class="quiz-explanation">${q.explanation||''}</div>`;
+  document.getElementById('ove-content').insertBefore(res,btn||null);
+  const nextBtn=document.createElement('button');
+  nextBtn.className='btn btn-primary';
+  nextBtn.textContent=correct?'🎉 Получить очки':'📖 Понял, продолжить';
+  nextBtn.onclick=()=>finishQuest(correct);
+  document.getElementById('ove-content').appendChild(nextBtn);
+}
+
+function completeExplore(){finishQuest(true);}
+function completePhoto(){finishQuest(true);}
+
+function triggerPhotoCapture(){
+  document.getElementById('file-input').click();
+}
+
+function finishQuest(success){
+  const q=activeQuest;
+  if(!q||!success)return;
+  const isNew=!state.completedQuests.includes(q.id);
+  if(isNew){
+    state.completedQuests.push(q.id);
+    state.points+=q.points;
+    state.categoryPoints[q.category]=(state.categoryPoints[q.category]||0)+q.points;
+    state.level=calcLevel(state.points);
+    saveState();
+  }
+  closeOv('ov-exec');
+  showQC(q,isNew);
+  document.getElementById('mc').textContent=state.discovered.length;
+}
+
+// ===================== PHOTO/FIND HANDLER =====================
+document.getElementById('file-input').addEventListener('change',async e=>{
+  const file=e.target.files[0];
+  if(!file)return;
+  e.target.value='';
+  if(photoCapCallback==='photo'){
+    const url=URL.createObjectURL(file);
+    const prev=document.getElementById('ph-preview');
+    const ph=document.getElementById('ph-placeholder');
+    if(prev){prev.src=url;prev.style.display='block';}
+    if(ph)ph.style.display='none';
+    const btn=document.getElementById('ph-confirm');
+    if(btn)btn.style.display='flex';
+    photoCapCallback=null;
+  } else if(photoCapCallback==='find'){
+    photoCapCallback=null;
+    showSpinner('Определяю вид...');
+    try{
+      const base64=await fileToBase64(file);
+      const res=await fetch('/api/identify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:base64})});
+      const data=await res.json();
+      hideSpinner();
+      if(data.found){
+        const isNew=!state.discovered.includes(data.speciesId);
+        if(isNew&&data.speciesId){
+          state.discovered.push(data.speciesId);
+          const sp=SPECIES.find(s=>s.id===data.speciesId);
+          const pts=sp?.rarity==='rare'?500:sp?.rarity==='uncommon'?150:50;
+          state.points+=pts;state.categoryPoints.ecology=(state.categoryPoints.ecology||0)+pts;
+          saveState();
+        }
+        const sp=SPECIES.find(s=>s.id===data.speciesId);
+        const area=document.getElementById('find-result-area');
+        if(area)area.innerHTML=`<div class="find-result anim-slide">
+          <div style="font-size:36px;margin-bottom:8px">${sp?.icon||'🌿'}</div>
+          <div class="find-species-name">${data.nameRu}</div>
+          <div class="find-species-latin">${data.nameLatin}</div>
+          <div class="find-fact">${data.fact||sp?.fact||''}</div>
+          ${isNew?'<div style="color:var(--green);margin-top:10px;font-weight:600">🌟 Новый вид в Атласе!</div>':'<div style="color:var(--muted);margin-top:8px">✓ Уже в Атласе</div>'}
+        </div>
+        <button class="btn btn-primary" style="margin-top:12px" onclick="finishQuest(true)">✅ Засчитать</button>`;
+      } else {
+        const area=document.getElementById('find-result-area');
+        if(area)area.innerHTML=`<div class="quiz-result fail">${data.hint||'Не удалось определить. Попробуй сфотографировать крупнее.'}</div>
+        <button class="btn btn-secondary" style="margin-top:8px" onclick="triggerPhotoCapture()">📸 Попробовать снова</button>`;
+        photoCapCallback='find';
+      }
+    } catch(err){hideSpinner();showToast('Ошибка','Проверь соединение');}
+  } else {
+    // FAB — free scan
+    showSpinner('Определяю вид...');
+    try{
+      const base64=await fileToBase64(file);
+      const res=await fetch('/api/identify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:base64})});
+      const data=await res.json();hideSpinner();
+      if(data.found){
+        const isNew=!state.discovered.includes(data.speciesId);
+        if(isNew&&data.speciesId){
+          state.discovered.push(data.speciesId);
+          const sp=SPECIES.find(s=>s.id===data.speciesId);
+          const pts=sp?.rarity==='rare'?500:sp?.rarity==='uncommon'?150:50;
+          state.points+=pts;state.categoryPoints.ecology=(state.categoryPoints.ecology||0)+pts;
+          saveState();document.getElementById('mc').textContent=state.discovered.length;
+        }
+        showToast(isNew?`🌟 ${data.nameRu}!`:`✓ ${data.nameRu}`,data.fact||'');
+      } else showToast('🔍 Не распознано',data.hint||'Попробуй крупнее');
+    } catch{hideSpinner();showToast('Ошибка','Проверь соединение');}
+  }
 });
+document.getElementById('fab').addEventListener('click',()=>{photoCapCallback=null;document.getElementById('file-input').click();});
 
-// === АТЛАС ===
-function renderAtlas() {
-  const grid = document.getElementById('atlas-grid');
-  const found = state.found.length;
-  document.getElementById('atlas-counter-text').textContent = `${found} из ${SPECIES.length} обнаружено`;
-  document.getElementById('map-counter').textContent = found;
+function fileToBase64(file){return new Promise(r=>{
+  const reader=new FileReader();
+  reader.onload=e=>{const img=new Image();img.onload=()=>{
+    const c=document.createElement('canvas');const max=800;
+    let w=img.width,h=img.height;
+    if(w>max||h>max){const ratio=Math.min(max/w,max/h);w=Math.round(w*ratio);h=Math.round(h*ratio);}
+    c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+    r(c.toDataURL('image/jpeg',.8).split(',')[1]);
+  };img.src=e.target.result;};reader.readAsDataURL(file);
+});}
 
-  grid.innerHTML = SPECIES.map(sp => {
-    const isFound = state.found.includes(sp.id);
-    const rarityClass = sp.rarity !== 'common' ? 'rare' : '';
-    return `<div class="atlas-card ${isFound ? 'found' : ''} ${rarityClass}" onclick="openSpeciesModal('${sp.id}')">
-      ${isFound ? `<div class="atlas-card-icon">${sp.icon}</div>` : `<div class="atlas-card-lock">?</div>`}
-      <div class="atlas-card-name">${isFound ? sp.nameRu : '???'}</div>
-      ${sp.rarity === 'rare' ? '<div class="atlas-card-badge">⭐</div>' : ''}
+// ===================== SPECIES VIEW =====================
+function openSpecies(id){
+  const sp=SPECIES.find(s=>s.id===id);if(!sp)return;
+  const found=state.discovered.includes(id);
+  document.getElementById('ovs-title').textContent=sp.nameRu;
+  const rar={common:'Обычный',uncommon:'Редкий',rare:'Очень редкий'};
+  const rarCls={common:'rar-common',uncommon:'rar-uncommon',rare:'rar-rare'};
+  openOv('ov-species',()=>{
+    document.getElementById('ovs-content').innerHTML=`
+      <div class="sd-latin">${sp.nameLatin}</div>
+      <div class="sd-name">${sp.nameRu}</div>
+      <div class="sd-icon">${found?sp.icon:'🔍'}</div>
+      ${found?`
+        <div class="sd-section"><div class="sd-label">Описание</div><div class="sd-text">${sp.description}</div></div>
+        <div class="sd-section"><div class="sd-label">Интересный факт</div><div class="sd-text">${sp.fact}</div></div>
+        <div class="sd-section"><div class="sd-label">Где найти</div><div class="sd-text">${sp.where}</div></div>
+        <span class="rar-badge ${rarCls[sp.rarity]}">${rar[sp.rarity]}</span>
+        <div class="found-tag">✓ В твоём Атласе</div>
+      `:`<div class="sd-text" style="text-align:center;color:var(--muted)">Сфотографируй этот вид чтобы открыть карточку</div>
+        <span class="rar-badge ${rarCls[sp.rarity]}" style="display:block;margin-top:12px">${rar[sp.rarity]}</span>
+        <button class="btn btn-primary" style="margin-top:20px" onclick="document.getElementById('file-input').click()">📸 Сфотографировать</button>`}
+      <div style="height:20px"></div>`;
+  });
+}
+
+// ===================== ATLAS =====================
+function renderAtlas(){
+  const found=state.discovered.length;
+  document.getElementById('atlas-cnt').textContent=`${found} из ${SPECIES.length} обнаружено`;
+  document.getElementById('atlas-grid').innerHTML=SPECIES.map(sp=>{
+    const f=state.discovered.includes(sp.id);
+    const rar=sp.rarity!=='common'?'rare':'';
+    return `<div class="ac ${f?'found':''} ${rar}" onclick="openSpecies('${sp.id}')">
+      ${f?`<div class="ac-icon">${sp.icon}</div>`:`<div class="ac-lock">?</div>`}
+      <div class="ac-name">${f?sp.nameRu:'???'}</div>
+      ${sp.rarity==='rare'?'<div class="ac-star">⭐</div>':''}
     </div>`;
   }).join('');
 }
 
-// === КВЕСТЫ ===
-function renderQuests() {
-  document.getElementById('quest-list').innerHTML = QUESTS.map(q => `
-    <div class="quest-card ${q.secret ? 'secret' : ''}">
-      <div class="quest-title">${q.title}</div>
-      <div class="quest-desc">${q.secret ? '🔒 Квест разблокируется при особых условиях...' : q.desc}</div>
-      <div class="quest-meta">
-        <div class="quest-zone">${q.zone}</div>
-        ${q.secret ? '<div class="quest-lock">🔒</div>' : `<div class="quest-reward">${q.reward}</div>`}
-      </div>
-    </div>`).join('');
+// ===================== QUESTS SCREEN =====================
+let currentCat='all';
+function renderQuests(){
+  const tabs=[{id:'all',icon:'📋',label:'Все'},...Object.entries(CAT).map(([id,c])=>({id,icon:c.icon,label:c.label}))];
+  document.getElementById('cat-tabs').innerHTML=tabs.map(t=>`<div class="ctab ${currentCat===t.id?'active':''}" onclick="filterCat('${t.id}')">${t.icon} ${t.label}</div>`).join('');
+  const filtered=currentCat==='all'?QUESTS:QUESTS.filter(q=>q.category===currentCat);
+  document.getElementById('qs-list').innerHTML=filtered.length?filtered.map(q=>renderQuestItem(q)).join(''):`<div class="empty">Квестов нет</div>`;
 }
+function filterCat(id){currentCat=id;renderQuests();}
+// onclick on each .qi handles navigation directly
 
-// === ПРОФИЛЬ ===
-function renderProfile() {
-  const lvl = calcLevel(state.points);
-  state.level = lvl;
-  document.getElementById('profile-name').textContent = state.userName;
-  document.getElementById('profile-level').textContent = `Уровень ${lvl} · ${LEVEL_NAMES[lvl] || 'Учёный'}`;
-  document.getElementById('stat-found').textContent = state.found.length;
-  document.getElementById('stat-points').textContent = state.points;
-
-  const curr = LEVEL_THRESHOLDS[lvl] || 0;
-  const next = LEVEL_THRESHOLDS[lvl + 1] || curr + 500;
-  const pct = Math.min(100, Math.round((state.points - curr) / (next - curr) * 100));
-  document.getElementById('pb-fill').style.width = pct + '%';
-  document.getElementById('pb-label-right').textContent = `${next - state.points} до ур. ${lvl + 1}`;
-
-  document.querySelectorAll('.mode-opt').forEach(el => {
-    el.classList.toggle('active', el.dataset.mode === state.mode);
+// ===================== PROGRESS =====================
+function renderProgress(){
+  const l=calcLevel(state.points);state.level=l;
+  document.getElementById('pname').textContent=state.userName;
+  document.getElementById('plevel').textContent=`Уровень ${l} · ${LEVELS[l]||'Учёный'}`;
+  document.getElementById('ps-found').textContent=state.discovered.length;
+  document.getElementById('ps-quests').textContent=state.completedQuests.length;
+  document.getElementById('ps-pts').textContent=state.points;
+  const cats=[
+    {id:'ecology',max:QUESTS.filter(q=>q.category==='ecology').length*200},
+    {id:'history',max:QUESTS.filter(q=>q.category==='history').length*200},
+    {id:'culture',max:QUESTS.filter(q=>q.category==='culture').length*200},
+    {id:'animals',max:QUESTS.filter(q=>q.category==='animals').length*200}
+  ];
+  document.getElementById('cat-prog-rows').innerHTML=cats.map(({id,max})=>{
+    const c=CAT[id];const pts=state.categoryPoints[id]||0;
+    const pct=max>0?Math.min(100,Math.round(pts/max*100)):0;
+    return `<div class="cprow">
+      <div class="cprow-top"><div class="cprow-label">${c.icon} ${c.label}</div><div class="cprow-pct">${pct}%</div></div>
+      <div class="pb-track"><div class="pb-fill" style="width:${pct}%;background:${c.color}"></div></div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('.mopt').forEach(el=>{
+    el.classList.toggle('active',el.dataset.mode===state.mode);
+    el.onclick=()=>{state.mode=el.dataset.mode;saveState();renderProgress();};
   });
 }
 
-document.querySelectorAll('.mode-opt').forEach(el => {
-  el.addEventListener('click', () => { state.mode = el.dataset.mode; saveState(); renderProfile(); });
-});
-
-// === МОДАЛЬНОЕ ОКНО ВИДА ===
-function openSpeciesModal(id) {
-  const sp = SPECIES.find(s => s.id === id);
-  if (!sp) return;
-  const isFound = state.found.includes(id);
-  document.getElementById('sm-latin').textContent = sp.nameLatin;
-  document.getElementById('sm-name').textContent = sp.nameRu;
-  document.getElementById('sm-icon').textContent = isFound ? sp.icon : '🔍';
-  document.getElementById('sm-fact').textContent = isFound ? sp.fact : 'Найди этот вид чтобы узнать интересный факт';
-  const rarityLabels = { common:'Обычный', uncommon:'Редкий', rare:'Очень редкий' };
-  const rarityClasses = { common:'rarity-common', uncommon:'rarity-uncommon', rare:'rarity-rare' };
-  document.getElementById('sm-rarity').innerHTML = `<span class="species-rarity ${rarityClasses[sp.rarity]}">${rarityLabels[sp.rarity]}</span>`;
-  document.getElementById('sm-found-tag').innerHTML = isFound
-    ? '<div class="species-found-tag">✓ В твоём Атласе</div>'
-    : '<div style="color:var(--text-muted);font-size:13px;margin-top:12px;">Сфотографируй чтобы добавить в Атлас</div>';
-  document.getElementById('species-modal').classList.add('open');
+// ===================== QUEST COMPLETE =====================
+function showQC(q,isNew){
+  document.getElementById('qc-icon').textContent=q.icon;
+  document.getElementById('qc-title').textContent=isNew?'Квест выполнен!':'Пройден снова!';
+  document.getElementById('qc-pts').textContent=isNew?`+${q.points} очков`:'';
+  document.getElementById('qc-badge').textContent=isNew&&q.isSecret?'🏅 Секретное достижение разблокировано':'';
+  document.getElementById('qc-overlay').classList.add('show');
 }
+function closeQC(){document.getElementById('qc-overlay').classList.remove('show');}
 
-function closeSpeciesModal(e) {
-  if (e.target === document.getElementById('species-modal')) document.getElementById('species-modal').classList.remove('open');
+// ===================== UTILS =====================
+let toastT;
+function showToast(t,b){
+  document.getElementById('toast-t').textContent=t;
+  document.getElementById('toast-b').textContent=b;
+  document.getElementById('toast').classList.add('show');
+  clearTimeout(toastT);toastT=setTimeout(()=>document.getElementById('toast').classList.remove('show'),4000);
 }
+function showSpinner(txt){document.getElementById('spin-txt').textContent=txt||'Загрузка...';document.getElementById('spinner').classList.add('show');}
+function hideSpinner(){document.getElementById('spinner').classList.remove('show');}
 
-// === НАВИГАЦИЯ ===
-document.querySelectorAll('.nav-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById(btn.dataset.screen).classList.add('active');
-    document.getElementById('location-sheet').classList.remove('open');
-    if (btn.dataset.screen === 'atlas-screen') renderAtlas();
-    if (btn.dataset.screen === 'quests-screen') renderQuests();
-    if (btn.dataset.screen === 'profile-screen') renderProfile();
-    if (btn.dataset.screen === 'map-screen') setTimeout(() => map?.invalidateSize(), 50);
-  });
-});
-
-// === КАМЕРА И ОПРЕДЕЛЕНИЕ ===
-document.getElementById('fab').addEventListener('click', () => document.getElementById('file-input').click());
-
-document.getElementById('file-input').addEventListener('change', async e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  e.target.value = '';
-
-  const spinner = document.getElementById('spinner');
-  spinner.classList.add('show');
-
-  try {
-    const base64 = await fileToBase64(file);
-    const res = await fetch('/api/identify', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ image: base64 })
-    });
-    const data = await res.json();
-    spinner.classList.remove('show');
-
-    if (data.found) {
-      const isNew = !state.found.includes(data.speciesId);
-      if (isNew && data.speciesId) {
-        state.found.push(data.speciesId);
-        state.points += data.rarity === 'rare' ? 500 : 50;
-        saveState();
-        renderAtlas();
-        renderProfile();
-      }
-      showToast(
-        isNew ? `🌟 Новый вид: ${data.nameRu}!` : `✓ ${data.nameRu}`,
-        isNew ? `${data.fact || ''}\n+${data.rarity === 'rare' ? 500 : 50} очков` : 'Уже в твоём Атласе'
-      );
-    } else {
-      showToast('🔍 Не распознано', data.hint || 'Попробуй сфотографировать крупнее — лист или цветок');
-    }
-  } catch {
-    spinner.classList.remove('show');
-    showToast('Ошибка', 'Проверь подключение к интернету');
-  }
-});
-
-function fileToBase64(file) {
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const max = 800;
-        let w = img.width, h = img.height;
-        if (w > max || h > max) { const r = Math.min(max/w, max/h); w = Math.round(w*r); h = Math.round(h*r); }
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-// === УВЕДОМЛЕНИЕ ===
-let toastTimer;
-function showToast(title, body) {
-  document.getElementById('toast-title').textContent = title;
-  document.getElementById('toast-body').textContent = body;
-  const t = document.getElementById('toast');
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
-}
-
-// === ИНИЦИАЛИЗАЦИЯ ===
+// ===================== INIT =====================
 initMap();
-renderAtlas();
-renderQuests();
-renderProfile();
+document.getElementById('mc').textContent=state.discovered.length;
+
+// tabs rendered by renderQuests() when user navigates to quests screen
 </script>
 </body>
 </html>
