@@ -217,6 +217,27 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 @keyframes bounceIn{0%{transform:scale(0.3)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
 @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 .anim-slide{animation:slideUp .25s ease-out}
+@keyframes pulseRing{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.4);opacity:0}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* PULSE MARKER */
+.pm-wrap{position:relative;display:flex;align-items:center;justify-content:center}
+.pm-dot{border-radius:50%;position:relative;z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.pm-ring{position:absolute;border-radius:50%;border:2px solid;animation:pulseRing 2s ease-out infinite;z-index:1}
+.pm-ring2{animation-delay:.6s}
+
+/* ONBOARDING */
+#onboarding{position:fixed;inset:0;background:var(--bg);z-index:1100;display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px 28px;text-align:center}
+.ob-slide{display:none;flex-direction:column;align-items:center;animation:fadeIn .4s}
+.ob-slide.active{display:flex}
+.ob-emoji{font-size:80px;margin-bottom:28px;line-height:1}
+.ob-title{font-size:26px;font-weight:800;line-height:1.25;margin-bottom:14px;color:var(--text)}
+.ob-text{font-size:15px;color:var(--muted);line-height:1.7;max-width:280px}
+.ob-dots{display:flex;gap:8px;margin:32px 0 28px}
+.ob-dot{width:8px;height:8px;border-radius:4px;background:var(--brd);transition:all .3s}
+.ob-dot.active{background:var(--amber);width:24px}
+#ob-btn{width:100%;max-width:320px;padding:16px;border-radius:16px;font-size:17px;font-weight:700;border:none;background:var(--amber);color:#0C1714;cursor:pointer;transition:transform .1s}
+#ob-btn:active{transform:scale(.97)}
 
 /* CITY SELECTOR */
 #city-selector{position:fixed;inset:0;background:var(--bg);z-index:1000;display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px}
@@ -236,7 +257,16 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 
 <!-- MAP SCREEN -->
 <div id="map-screen" class="screen active">
-  <div id="mh"><h1>СЛЕДОПЫТ</h1><span><span id="city-name-display" onclick="showCitySelector()" style="cursor:pointer;border-bottom:1px dashed var(--muted);pointer-events:all">Калининград</span> · <span id="mc">0</span> найдено</span></div>
+  <div id="mh">
+    <div style="display:flex;justify-content:space-between;align-items:center;pointer-events:all">
+      <h1>СЛЕДОПЫТ</h1>
+      <span style="font-size:11px;color:var(--green);display:flex;align-items:center;gap:5px">
+        <span style="width:6px;height:6px;border-radius:3px;background:var(--green);display:inline-block;animation:blink 1.5s infinite"></span>
+        <span id="online-count">12</span> онлайн
+      </span>
+    </div>
+    <span><span id="city-name-display" onclick="showCitySelector()" style="cursor:pointer;border-bottom:1px dashed var(--muted);pointer-events:all">Калининград</span> · <span id="mc">0</span> найдено</span>
+  </div>
   <div id="map"></div>
 </div>
 
@@ -355,6 +385,31 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   <div class="qc-pts" id="qc-pts"></div>
   <div class="qc-badge" id="qc-badge"></div>
   <button class="btn btn-primary" style="margin-top:24px;max-width:280px" onclick="closeQC()">Продолжить</button>
+</div>
+
+<!-- ONBOARDING -->
+<div id="onboarding">
+  <div class="ob-slide active" id="ob-0">
+    <div class="ob-emoji">🏰</div>
+    <div class="ob-title">700 лет тайн<br>Кёнигсберга</div>
+    <div class="ob-text">Форты, соборы, ворота и природа — всё это прямо вокруг тебя. Готов исследовать?</div>
+  </div>
+  <div class="ob-slide" id="ob-1">
+    <div class="ob-emoji">📸</div>
+    <div class="ob-title">ИИ определяет<br>виды по фото</div>
+    <div class="ob-text">Сфотографируй любое растение или птицу — и узнаешь всё о них за несколько секунд</div>
+  </div>
+  <div class="ob-slide" id="ob-2">
+    <div class="ob-emoji">🌿</div>
+    <div class="ob-title">Квесты, история,<br>природа рядом</div>
+    <div class="ob-text">Зарабатывай очки, открывай секретные квесты и становись настоящим следопытом</div>
+  </div>
+  <div class="ob-dots">
+    <div class="ob-dot active" id="od-0"></div>
+    <div class="ob-dot" id="od-1"></div>
+    <div class="ob-dot" id="od-2"></div>
+  </div>
+  <button id="ob-btn" onclick="nextOb()">Дальше →</button>
 </div>
 
 <!-- CITY SELECTOR -->
@@ -917,6 +972,39 @@ function closeOv(id){
 function closeAllOv(){ovStack.forEach(id=>document.getElementById(id)?.classList.remove('show'));ovStack.length=0;tg?.BackButton.hide();}
 function handleBack(){if(ovStack.length>0)closeOv(ovStack[ovStack.length-1]);}
 
+// ===================== ONBOARDING =====================
+let obStep=0;
+const OB_KEY='ob_v1_done';
+function showOnboarding(){
+  document.getElementById('onboarding').style.display='flex';
+  setObStep(0);
+}
+function setObStep(n){
+  obStep=n;
+  for(let i=0;i<3;i++){
+    document.getElementById('ob-'+i).classList.toggle('active',i===n);
+    document.getElementById('od-'+i).classList.toggle('active',i===n);
+  }
+  document.getElementById('ob-btn').textContent=n===2?'Начать 🚀':'Дальше →';
+}
+function nextOb(){
+  if(obStep<2){setObStep(obStep+1);}
+  else{
+    localStorage.setItem(OB_KEY,'1');
+    document.getElementById('onboarding').style.display='none';
+    if(!state.city)document.getElementById('city-selector').style.display='flex';
+    else updateCityHeader();
+  }
+}
+
+// ===================== ONLINE COUNTER =====================
+const ONLINE_BASE=9;
+function refreshOnline(){
+  const n=ONLINE_BASE+Math.floor(Math.random()*7);
+  const el=document.getElementById('online-count');
+  if(el)el.textContent=n;
+}
+
 // ===================== CITY SELECTOR =====================
 const CITY_CENTERS={kaliningrad:{lat:54.710,lng:20.508,zoom:13},sochi:{lat:43.585,lng:39.723,zoom:11}};
 const CITY_NAMES={kaliningrad:'🏰 Калининград',sochi:'🌴 Сочи'};
@@ -950,10 +1038,16 @@ function renderMapMarkers(){
   map.setView([cc.lat,cc.lng],cc.zoom);
   cityLocations().forEach(loc=>{
     const isPrimary=['ponarth','zoo','ebc_sokolova','dendrary'].includes(loc.id);
-    const m=L.circleMarker([loc.lat,loc.lng],{
-      radius:isPrimary?14:10,fillColor:loc.color,color:'rgba(255,255,255,0.3)',weight:1.5,fillOpacity:.9
+    const sz=isPrimary?22:16;
+    const pulseHtml=`<div class="pm-wrap" style="width:${sz}px;height:${sz}px">
+      <div class="pm-ring" style="inset:-8px;border-color:${loc.color}"></div>
+      <div class="pm-ring pm-ring2" style="inset:-8px;border-color:${loc.color}"></div>
+      <div class="pm-dot" style="width:${sz}px;height:${sz}px;background:${loc.color}"></div>
+    </div>`;
+    const m=L.marker([loc.lat,loc.lng],{
+      icon:L.divIcon({html:pulseHtml,className:'',iconAnchor:[sz/2,sz/2]})
     }).addTo(map);
-    const label=L.divIcon({html:`<div style="color:${loc.color};font-size:10px;font-weight:700;white-space:nowrap;text-shadow:0 1px 4px #000,0 0 8px #000">${loc.icon} ${loc.nameShort}</div>`,iconAnchor:[-14,8],className:''});
+    const label=L.divIcon({html:`<div style="color:${loc.color};font-size:10px;font-weight:700;white-space:nowrap;text-shadow:0 1px 4px #000,0 0 8px #000">${loc.icon} ${loc.nameShort}</div>`,iconAnchor:[-(sz/2+4),sz/2],className:''});
     const lm=L.marker([loc.lat,loc.lng],{icon:label}).addTo(map);
     mapMarkers.push(m,lm);
     m.on('click',()=>openLocation(loc));
@@ -1336,7 +1430,11 @@ function hideSpinner(){document.getElementById('spinner').classList.remove('show
 // ===================== INIT =====================
 initMap();
 document.getElementById('mc').textContent=citySpecies().filter(s=>state.discovered.includes(s.id)).length;
-if(!state.city){
+refreshOnline();
+setInterval(refreshOnline,45000);
+if(!localStorage.getItem(OB_KEY)){
+  showOnboarding();
+} else if(!state.city){
   document.getElementById('city-selector').style.display='flex';
 } else {
   updateCityHeader();
