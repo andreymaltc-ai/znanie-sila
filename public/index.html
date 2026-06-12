@@ -79,6 +79,25 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .pts{font-size:10px;color:var(--muted);margin-left:auto}
 .done-mark{font-size:14px;margin-left:auto}
 
+/* TIME-OF-DAY BADGES */
+.time-badge{font-size:10px;padding:3px 8px;border-radius:10px;white-space:nowrap}
+.time-night{background:rgba(41,50,111,.35);color:#90CAF9}
+.time-evening{background:rgba(120,70,10,.25);color:#FFCC80}
+.time-dawn{background:rgba(60,90,0,.25);color:#C5E1A5}
+.qi.night-quest{border-color:rgba(144,202,249,.22)}
+.qi.coming-soon{opacity:.72;cursor:default}
+.qi.coming-soon:active{transform:none;border-color:var(--brd)}
+
+/* AUDIO PLAYER */
+.audio-player{background:var(--card);border:1px solid var(--brd);border-radius:16px;padding:20px;margin-bottom:20px;text-align:center}
+.audio-player-coming{border-color:rgba(79,195,247,.3);background:rgba(79,195,247,.04)}
+.audio-wave{display:flex;align-items:flex-end;justify-content:center;gap:3px;height:44px;margin:14px 0}
+.audio-bar{width:4px;border-radius:2px;background:var(--blue);animation:audioBar .9s ease-in-out infinite alternate}
+@keyframes audioBar{from{opacity:.15;transform:scaleY(.5)}to{opacity:.85;transform:scaleY(1)}}
+.audio-coming-label{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px}
+.audio-btn{width:56px;height:56px;border-radius:28px;background:var(--blue);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;margin:12px auto 0;font-size:22px;color:#0C1714;transition:transform .1s}
+.audio-btn:active{transform:scale(.93)}
+
 /* QUEST DETAIL */
 .qd-icon{font-size:56px;text-align:center;margin:16px 0 12px}
 .qd-title{font-size:22px;font-weight:700;margin-bottom:4px}
@@ -538,7 +557,7 @@ const QUESTS=[
    instruction:'Сфотографируй любую птицу в зоопарке — фламинго, павлина, пингвина или попугая. AI попробует определить вид.',
    targetSpeciesIds:[]},
 
-  {id:'zoo_secret_dawn',locationId:'zoo',title:'Зоопарк на рассвете',subtitle:'Тайный квест',category:'secret',type:'photo',difficulty:3,points:500,icon:'🌅',isSecret:true,
+  {id:'zoo_secret_dawn',locationId:'zoo',title:'Зоопарк на рассвете',subtitle:'Тайный квест',category:'secret',type:'photo',difficulty:3,points:500,icon:'🌅',isSecret:true,timeWindow:'dawn',
    instruction:'Сфотографируй ворота зоопарка в момент открытия (обычно в 9:00)',
    hint:'Животные наиболее активны на рассвете — именно тогда они издают звуки, которые не слышны днём. Будь первым посетителем.'},
 
@@ -634,7 +653,7 @@ const QUESTS=[
    options:['7','9','12','15'],correctIndex:2,
    explanation:'12 фортов, построенных в 1878-1882 годах. Форты пронумерованы от 1 до 12. Форт №5 носит имя короля Фридриха Вильгельма III.'},
 
-  {id:'fort_bats_secret',locationId:'fort5',title:'Ночная охота',subtitle:'Секретный квест',category:'secret',type:'photo',difficulty:3,points:500,icon:'🦇',isSecret:true,
+  {id:'fort_bats_secret',locationId:'fort5',title:'Ночная охота',subtitle:'Секретный квест',category:'secret',type:'photo',difficulty:3,points:500,icon:'🦇',isSecret:true,timeWindow:'night',
    instruction:'Сфотографируй летящую летучую мышь у форта после захода солнца',
    hint:'Рыжие вечерницы начинают охотиться сразу после захода солнца. Встань у входа в форт и наблюдай небо. Летучие мыши летают зигзагами, ловя насекомых на лету — совсем не как птицы.'},
 
@@ -906,9 +925,45 @@ const QUESTS=[
    options:['Сталак-ТИТ — держиТСЯ за потолок; сталаг-МИТ — стоИТ на полу','Сталактит — тяжёлый (падает вниз), сталагмит — лёгкий (тянется вверх)','Они одинаковые, просто в разных пещерах по-разному называют','По длине: длиннее = сталактит'],
    correctIndex:0,explanation:'Мнемоника: сталакТИТ — держиТСЯ за потолок, сталагМИТ — стоИТ на полу. Когда они срастаются — образуется сталагнат (колонна). Сталактиты растут из потолка, сталагмиты — из пола навстречу.'},
 
-  {id:'caves_bats_secret',locationId:'vorontsov_caves',title:'Ночной патруль',subtitle:'Секретный квест — летучие мыши',category:'secret',type:'photo',difficulty:3,points:500,icon:'🦇',isSecret:true,
+  {id:'caves_bats_secret',locationId:'vorontsov_caves',title:'Ночной патруль',subtitle:'Секретный квест — летучие мыши',category:'secret',type:'photo',difficulty:3,points:500,icon:'🦇',isSecret:true,timeWindow:'night',
    instruction:'Сфотографируй летучую мышь у входа в пещеру после захода солнца',
-   hint:'Подковоносы вылетают строго после полного захода солнца. Встань в 10–15 метрах от входа и смотри вверх. Мышь летит зигзагами — это не хаос, это охота на мотыльков с помощью ультразвука. Совсем не как птицы.'}
+   hint:'Подковоносы вылетают строго после полного захода солнца. Встань в 10–15 метрах от входа и смотри вверх. Мышь летит зигзагами — это не хаос, это охота на мотыльков с помощью ультразвука. Совсем не как птицы.'},
+
+  // === НОЧНЫЕ / РАССВЕТНЫЕ КВЕСТЫ — КАЛИНИНГРАД ===
+  {id:'ponarth_night_tower',locationId:'ponarth',title:'Понарт в сумерках',subtitle:'Башня XIX века при вечернем свете',category:'secret',type:'photo',difficulty:2,points:300,icon:'🌆',isSecret:true,timeWindow:'evening',
+   instruction:'Сфотографируй башню пивоварни Понарт в сумерках или при искусственном освещении',
+   hint:'После захода солнца красный кирпич меняет характер — фонари подсвечивают кладку XIX века иначе, чем днём. Встань с противоположной стороны улицы: башня целиком в кадре, тёмное небо даёт контраст. Попробуй поймать момент, когда свет неба ещё синий.'},
+
+  {id:'kant_night_reflection',locationId:'kant',title:'Собор в воде',subtitle:'Ночное отражение в Преголе',category:'secret',type:'photo',difficulty:2,points:350,icon:'🌙',isSecret:true,timeWindow:'night',
+   instruction:'Сфотографируй ночное отражение Кафедрального собора в реке Преголь',
+   hint:'Встань у парапета набережной острова — там ровный ракурс на воду. Телефон держи двумя руками или положи на перила. Лучшее время — через 40–60 минут после заката: небо тёмно-синее, огни уже горят. Длинная выдержка даст мягкие размытые отражения.'},
+
+  {id:'upper_lake_night',locationId:'upper_lake',title:'Ночное зеркало',subtitle:'Огни города в тёмной воде',category:'secret',type:'photo',difficulty:2,points:300,icon:'🌃',isSecret:true,timeWindow:'night',
+   instruction:'Сфотографируй ночное Верхнее озеро — огни домов отражаются в спокойной воде',
+   hint:'Набережная Верхнего озера ночью выглядит иначе. Фонари, огни зданий, лунная дорожка. Встань у воды и поймай отражение. Утки иногда тревожат гладь — жди тишины. Это Калининград, который видят единицы.'},
+
+  {id:'fort5_dawn_secret',locationId:'fort5',title:'Первый свет форта',subtitle:'Рассветный секретный квест',category:'secret',type:'photo',difficulty:3,points:500,icon:'🌅',isSecret:true,timeWindow:'dawn',
+   instruction:'Сфотографируй Форт №5 в первые минуты рассвета — пока туман ещё лежит над рвом',
+   hint:'Приезжай за 20 минут до рассвета. Туман поднимается из рва. Летучие мыши возвращаются с охоты в казематы. Силуэт форта на фоне бледного неба — это не сфотографировать днём. Это то, что видят единицы.'},
+
+  // === АУДИОГИДЫ — СКОРО (comingSoon: true) ===
+  {id:'ponarth_audio',locationId:'ponarth',title:'Голос Понарта',subtitle:'Аудиогид: история пивоварни',category:'history',type:'audio',difficulty:1,points:200,icon:'🎧',isSecret:false,comingSoon:true,audioUrl:null,
+   content:`1849 год. Иоганн Шифердекер основывает пивоварню на окраине Кёнигсберга. Через полвека — одна из крупнейших в Восточной Пруссии, 150 000 бочек в год. После 1945 — советский пивзавод. Сегодня бренд живёт снова: крафт в стенах XIX века.`,
+   question:'В каком году основана пивоварня Понарт?',
+   options:['1829','1839','1849','1859'],correctIndex:2,
+   explanation:'1849 год. Иоганн Шифердекер выбрал это место не случайно: рядом качественная вода из скважин и удобный подъезд для поставок зерна.'},
+
+  {id:'kant_audio_organ',locationId:'kant',title:'Орган острова',subtitle:'Аудиогид с органной музыкой',category:'culture',type:'audio',difficulty:1,points:200,icon:'🎶',isSecret:false,comingSoon:true,audioUrl:null,
+   content:`Кафедральный собор — главный органный зал Калининграда. Орган здесь появился в XV веке. Сегодняшний инструмент создан немецкими мастерами. Он звучит здесь на том самом месте, где 700 лет назад пели хоры Тевтонского ордена.`,
+   question:'Сколько примерно труб в главном органе Кафедрального собора?',
+   options:['Около 500','Около 2000','Около 5000','Около 10 000'],correctIndex:1,
+   explanation:'Орган Кафедрального собора насчитывает около 2000 труб. Инструмент был полностью восстановлен и модернизирован в ходе реставрации собора в 1990-х годах.'},
+
+  {id:'fort_audio_1945',locationId:'fort5',title:'Голоса 1945 года',subtitle:'Аудиогид: штурм форта',category:'history',type:'audio',difficulty:2,points:250,icon:'🎙️',isSecret:false,comingSoon:true,audioUrl:null,
+   content:`Апрель 1945. Советские войска идут на штурм Кёнигсберга. Форт №5 — один из ключевых узлов обороны. Немецкий гарнизон держится трое суток. Потом — белый флаг. Казематы, где сейчас спят летучие мыши, были последней позицией.`,
+   question:'Сколько дней длился общий штурм Кёнигсберга в апреле 1945?',
+   options:['2 дня','4 дня','7 дней','14 дней'],correctIndex:1,
+   explanation:'Штурм Кёнигсберга продолжался 4 дня — с 6 по 9 апреля 1945 года. Несмотря на мощные укрепления, город пал быстрее, чем ожидало немецкое командование.'}
 ];
 
 // ===================== CITY HELPERS =====================
@@ -1064,17 +1119,21 @@ function openLocation(loc){
       <div style="height:16px"></div>`;
   });
 }
+const TIME_LABEL={night:'🌙 Ночной',evening:'🌆 Вечерний',dawn:'🌅 Рассветный'};
+const TIME_CLS={night:'time-night',evening:'time-evening',dawn:'time-dawn'};
 function renderQuestItem(q){
   const done=state.completedQuests.includes(q.id);
   const cat=CAT[q.category]||CAT.history;
-  return `<div class="qi ${q.isSecret?'secret':''} ${done?'done':''}" onclick="openQuestDetail('${q.id}')">
+  const clickHandler=q.comingSoon?`showComingSoon('${q.id}')`:`openQuestDetail('${q.id}')`;
+  return `<div class="qi ${q.isSecret?'secret':''} ${done?'done':''} ${q.timeWindow?'night-quest':''} ${q.comingSoon?'coming-soon':''}" onclick="${clickHandler}">
     <div class="qi-icon">${q.icon}</div>
     <div class="qi-body">
-      <div class="qi-title">${q.title}${q.isSecret&&!done?' 🔒':''}</div>
-      <div class="qi-sub">${q.subtitle}</div>
+      <div class="qi-title">${q.title}${q.isSecret&&!done?' 🔒':''}${q.comingSoon?' 🔜':''}</div>
+      <div class="qi-sub">${q.subtitle}${q.comingSoon?' — скоро':''}</div>
       <div class="qi-meta">
         <span class="cat-badge ${cat.cls}">${cat.icon} ${cat.label}</span>
         <span class="type-badge">${TYPE_ICON[q.type]} ${TYPE_LABEL[q.type]}</span>
+        ${q.timeWindow?`<span class="time-badge ${TIME_CLS[q.timeWindow]}">${TIME_LABEL[q.timeWindow]}</span>`:''}
         ${done?'<span class="done-mark">✅</span>':`<span class="pts">+${q.points} очков</span>`}
       </div>
     </div>
@@ -1113,9 +1172,15 @@ function openQuestDetail(id){
       </div>
       ${done?'<div class="quiz-result ok">✅ Этот квест уже выполнен! Ты заработал '+q.points+' очков.</div>':''}
       ${q.isSecret&&!done?'<div class="quiz-result" style="background:rgba(144,164,174,.1);border-color:#90A4AE;color:#90A4AE">🔐 Секретный квест. Особые условия для разблокировки.</div>':''}
-      <button class="btn ${done?'btn-secondary':'btn-primary'}" onclick="startQuest('${q.id}')">
+      ${q.timeWindow?`<div class="qd-type-info" style="border-color:${q.timeWindow==='night'?'rgba(144,202,249,.3)':q.timeWindow==='dawn'?'rgba(197,225,165,.3)':'rgba(255,204,128,.3)'}">
+        <div class="qd-type-icon">${TIME_LABEL[q.timeWindow].split(' ')[0]}</div>
+        <div><div style="font-weight:600;margin-bottom:4px">${TIME_LABEL[q.timeWindow]}</div><div class="qd-type-text">${q.timeWindow==='night'?'Лучше всего выполнять после захода солнца. Возьми фонарик.':q.timeWindow==='dawn'?'Выполняй на рассвете — до 8 утра. Стоит того.':'Выполняй в сумерках — за 30–60 минут до темноты.'}</div></div>
+      </div>`:''}
+      ${q.comingSoon?`<div class="quiz-result" style="background:rgba(79,195,247,.07);border-color:rgba(79,195,247,.3);color:var(--blue)">🔜 Аудиогид готовится. Появится в ближайшем обновлении.</div>
+      <button class="btn btn-secondary" disabled>🎧 Скоро будет доступно</button>`
+      :`<button class="btn ${done?'btn-secondary':'btn-primary'}" onclick="startQuest('${q.id}')">
         ${done?'🔄 Пройти снова':'▶️ Начать квест'}
-      </button>
+      </button>`}
       <div style="height:16px"></div>`;
   });
 }
@@ -1139,7 +1204,35 @@ function renderExec(){
   const q=activeQuest;
   if(!q)return;
   const c=document.getElementById('ove-content');
-  if(q.type==='explore'||q.type==='audio'){
+  if(q.type==='audio'){
+    quizAnswered=false;selectedOpt=null;
+    const bars=Array.from({length:10},(_,i)=>`<div class="audio-bar" style="height:${[20,50,80,60,100,70,40,90,55,30][i]}%;animation-delay:${i*0.09}s"></div>`).join('');
+    c.innerHTML=`
+      <div class="audio-player ${q.audioUrl?'':'audio-player-coming'}">
+        <div style="font-size:13px;font-weight:600;color:${q.audioUrl?'var(--text)':'var(--muted)'};margin-bottom:2px">${q.audioUrl?'Аудиогид':'Аудиогид готовится'}</div>
+        <div class="audio-wave">${bars}</div>
+        ${q.audioUrl
+          ?`<audio id="quest-audio" src="${q.audioUrl}" preload="metadata" style="display:none"></audio>
+             <button class="audio-btn" id="audio-play-btn" onclick="toggleAudio()">▶</button>
+             <div style="font-size:11px;color:var(--muted);margin-top:8px" id="audio-time">0:00 / --:--</div>`
+          :`<div style="font-size:30px;margin:4px 0">🎧</div>
+             <div class="audio-coming-label">Аудиогид этого маршрута<br>появится в следующем обновлении</div>`}
+      </div>
+      ${q.content?`<div class="eq-content">${q.content}</div>`:''}
+      ${q.question?`<div class="eq-question">${q.question}</div>
+      <div class="quiz-opts">${(q.options||[]).map((o,i)=>`<div class="qopt" onclick="selectOpt(this,${i})"><div class="qopt-letter">${'ABCD'[i]}</div><div>${o}</div></div>`).join('')}</div>
+      <button class="btn btn-primary" id="check-btn" onclick="checkQuiz()" disabled>Проверить ответ</button>`
+      :`<button class="btn btn-primary" onclick="completeExplore()">✅ Прочитал, понял</button>`}
+      <div style="height:16px"></div>`;
+    if(q.audioUrl){
+      const audio=document.getElementById('quest-audio');
+      audio.ontimeupdate=()=>{
+        const fmt=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+        const el=document.getElementById('audio-time');
+        if(el)el.textContent=`${fmt(audio.currentTime)} / ${isFinite(audio.duration)?fmt(audio.duration):'--:--'}`;
+      };
+    }
+  } else if(q.type==='explore'){
     quizAnswered=false;selectedOpt=null;
     c.innerHTML=`
       <div class="eq-content">${q.content||'Нет содержимого'}</div>
@@ -1407,6 +1500,20 @@ function showQC(q,isNew){
   document.getElementById('qc-overlay').classList.add('show');
 }
 function closeQC(){document.getElementById('qc-overlay').classList.remove('show');}
+
+function showComingSoon(id){
+  const q=QUESTS.find(x=>x.id===id);
+  if(!q)return;
+  showToast('🔜 Скоро',`«${q.title}» — аудиогид записывается. Появится в ближайшем обновлении.`);
+}
+
+function toggleAudio(){
+  const audio=document.getElementById('quest-audio');
+  const btn=document.getElementById('audio-play-btn');
+  if(!audio)return;
+  if(audio.paused){audio.play();if(btn)btn.textContent='⏸';}
+  else{audio.pause();if(btn)btn.textContent='▶';}
+}
 
 // ===================== UTILS =====================
 let toastT;
