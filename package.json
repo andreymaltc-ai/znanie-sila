@@ -1,7 +1,7 @@
 {
   "name": "znanie-sila",
   "version": "1.0.0",
-  "description": "Следопыт — натуралистическое приложение Калининграда",
+  "description": "Хочу всё знать — натуралистическое приложение Калининграда",
   "type": "module",
   "engines": { "node": ">=18" },
   "dependencies": {

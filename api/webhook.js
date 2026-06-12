@@ -23,7 +23,7 @@ async function processUpdate(update) {
 
   const chatId = msg.chat.id;
   const userId = msg.from.id;
-  const firstName = msg.from.first_name || 'Следопыт';
+  const firstName = msg.from.first_name || 'Исследователь';
 
   await getOrCreateUser(userId, firstName, msg.from.username);
 
@@ -57,12 +57,12 @@ async function processUpdate(update) {
   if (msg.text === '/start') {
     const total = SPECIES.length;
     await sendMessage(chatId,
-      `🌿 Привет, <b>${firstName}</b>! Добро пожаловать в <b>Следопыт</b>.\n\n` +
+      `🌿 Привет, <b>${firstName}</b>! Добро пожаловать в <b>Хочу всё знать</b>.\n\n` +
       `Калининград скрывает ${total} видов растений — исследуй их, начиная с территории пивоварни Понарт 1849 года.\n\n` +
       `📸 Отправь мне фото растения — определю вид\n` +
       `🗺 Или открой интерактивную карту:`,
       { reply_markup: { inline_keyboard: [[
-        { text: '🗺 Открыть карту Следопыта', web_app: { url: WEBAPP_URL } }
+        { text: '🗺 Открыть карту', web_app: { url: WEBAPP_URL } }
       ]]}});
     return;
   }
@@ -70,7 +70,7 @@ async function processUpdate(update) {
   // Команда /help
   if (msg.text === '/help') {
     await sendMessage(chatId,
-      `<b>Как пользоваться Следопытом:</b>\n\n` +
+      `<b>Как пользоваться «Хочу всё знать»:</b>\n\n` +
       `📸 Отправь фото → получи определение вида\n` +
       `🗺 Нажми кнопку → открой карту Калининграда\n` +
       `📖 В Атласе — все найденные виды\n` +
@@ -83,6 +83,6 @@ async function processUpdate(update) {
   await sendMessage(chatId,
     `📸 Отправь фото растения — определю вид.\nИли открой карту:`,
     { reply_markup: { inline_keyboard: [[
-      { text: '🗺 Открыть Следопыта', web_app: { url: WEBAPP_URL } }
+      { text: '🗺 Открыть карту', web_app: { url: WEBAPP_URL } }
     ]]}});
 }
